@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LINE公式アカウント機能開発ご提案書</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans JP', "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 60px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #2c3e50;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            font-size: 20px;
+            color: #00B900;
+            border-left: 6px solid #00B900;
+            padding-left: 15px;
+            margin-top: 40px;
+            margin-bottom: 20px;
+        }
+
+        h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #444;
+            margin-top: 25px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+
+        ul {
+            background-color: #f9f9f9;
+            padding: 20px 20px 20px 40px;
+            border-radius: 5px;
+            border: 1px solid #eee;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        .highlight-box {
+            background-color: #e8f5e9;
+            border: 1px solid #c8e6c9;
+            color: #2e7d32;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+
+        .flow-box {
+            background-color: #fff3e0;
+            border: 1px solid #ffe0b2;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+
+        .note {
+            font-size: 0.9em;
+            color: #666;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+
+        .flex-message-mock {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            max-width: 350px;
+            margin: 20px auto;
+            background-color: #fff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .flex-header {
+            color: #00B900;
+            font-weight: bold;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+
+        .flex-main {
+            text-align: center;
+            font-size: 24px;
+            color: #d32f2f;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+
+        .btn-mock {
+            background-color: #00B900;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            margin-top: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            width: 30%;
+        }
+
+        @media print {
+            body {
+                background-color: #fff;
+            }
+
+            .container {
+                box-shadow: none;
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div style="text-align: right; margin-bottom: 20px;">
+            202X年X月X日<br>
+            [あなたの名前/屋号]
+        </div>
+
+        <h1>LINE公式アカウント活用<br>「マイホーム適正予算診断」チャットボット導入ご提案書</h1>
+
+        <div style="margin-bottom: 40px;">
+            <strong>株式会社ウィンテート 御中</strong>
+        </div>
+
+        <p>
+            拝啓<br>
+            貴社ますますご清栄のこととお慶び申し上げます。<br>
+            この度は、LINEを活用した診断チャットボットの開発につきまして、具体的な実装案とお見積りのための構成案を提出いたします。<br>
+            「家探し迷子」のお客様を救い、スムーズな個別相談へつなげるための最適なシステム構成をご提案します。
+        </p>
+
+        <h2>1. 企画コンセプトと解決する課題</h2>
+        <p>
+            家探しの初期段階にあるお客様に対し、ポータルサイトをさまよう前に「自分だけの判断基準（予算・条件）」を提供するツールです。
+        </p>
+        <div class="highlight-box">
+            コンセプト：『3分で完了！ アプリのような診断＆AI相談パートナー』
+        </div>
+        <p>
+            従来の「一方的なFAQ」ではなく、ユーザーの回答結果をシステムが記憶し、その後の提案に活かす「コンシェルジュ型」の体験を提供します。
+        </p>
+
+        <h2>2. 提案システム構成：ハイブリッドAIアーキテクチャ</h2>
+        <p>
+            運用の柔軟性とコストパフォーマンスを最大化するため、以下の技術構成を採用します。
+        </p>
+
+        <h3>① 入力フォーム：Googleフォーム（LIFF連携）</h3>
+        <ul>
+            <li><strong>最大のメリット：</strong> 質問項目の追加・修正・削除が、貴社の管理画面から自由自在に行えます。</li>
+            <li><strong>データ管理：</strong> 全回答データが自動的にGoogleスプレッドシートに蓄積されるため、顧客リストの作成や分析が容易です。</li>
+        </ul>
+
+        <h3>② 診断ロジック（GAS自動計算）</h3>
+        <ul>
+            <li><strong>役割：</strong> フォームから送信されたデータを瞬時に解析し、「借入可能額」と「適正予算」を厳密に計算します。</li>
+            <li><strong>通知：</strong> 計算結果をLINEのトーク画面へ即座にプッシュ通知します。</li>
+        </ul>
+
+        <h3>③ 対話型AIエンジン（Dify導入）</h3>
+        <ul>
+            <li><strong>役割：</strong> 診断結果を踏まえた、自然な会話・相談対応。</li>
+            <li><strong>特徴：</strong> 診断で得た「予算」や「条件」をAIに記憶させます。ユーザーが「この予算で買える？」と聞くと、AIは診断結果を考慮した回答を行います。</li>
+        </ul>
+
+        <h2>3. ユーザー体験フロー（UX）</h2>
+        <p>
+            アプリの切り替えを感じさせないスムーズな設計で、離脱を防ぎます。
+        </p>
+
+        <h3>Step 1：診断スタート</h3>
+        <p>リッチメニューの「診断開始」をタップすると、LINEアプリ上に診断フォーム（Googleフォーム）がポップアップ表示されます。</p>
+
+        <h3>Step 2：入力・送信</h3>
+        <p>
+            使い慣れたインターフェースで、年収、家族構成、エリアなどを入力していただきます。<br>
+            <span class="note">※システム連携用のID項目は自動入力されます。誤操作防止のためのロック機能（入力規則）を実装します。</span>
+        </p>
+
+        <h3>Step 3：即時診断（Flex Message）</h3>
+        <p>送信後、システムが計算を行い、以下のような「診断カード」がLINEトーク画面に届きます。</p>
+
+        <div class="flex-message-mock">
+            <div class="flex-header">🏠 診断結果：Aランク</div>
+            <div style="font-size: 0.9em; color: #555;">〇〇様の無理のない購入予算</div>
+            <div class="flex-main">3,200万円</div>
+            <div style="font-size: 0.8em; color: #777; text-align: center;">（銀行借入上限目安：4,100万円）</div>
+            <hr style="border: 0; border-top: 1px dashed #ccc; margin: 15px 0;">
+            <div style="font-weight: bold; margin-bottom: 5px;">✅ 重視する条件</div>
+            <ul style="background: none; border: none; padding: 0; margin: 0; list-style: none; font-size: 0.9em;">
+                <li>・駐車場2台以上</li>
+                <li>・つくばエリア</li>
+            </ul>
+            <div class="btn-mock">
+                この条件でプロに相談する ＞
+            </div>
+        </div>
+
+        <h3>Step 4：相談・引き継ぎフロー（重要）</h3>
+        <div class="flow-box">
+            <strong>【ボタンクリック後の挙動】</strong><br><br>
+            <strong>1. ユーザー側：</strong><br>
+            「ありがとうございます。担当者が内容を確認いたします」というメッセージが自動返信されます。<br>
+            ユーザーは診断結果を持った状態で、自然に個別チャットへ移行できます。<br><br>
+            <strong>2. 貴社（管理者）側：</strong><br>
+            Googleスプレッドシートに回答データが蓄積されますので、管理画面から確認できます。<br>
+            担当者様は、ユーザーの診断結果を確認した上で、LINE公式アカウントの管理画面から個別にアプローチを開始できます。
+        </div>
+
+        <h2>4. 管理・運用面の特徴</h2>
+        <p>
+            貴社にて運用・調整がしやすい構成としています。
+        </p>
+        <table>
+            <tr>
+                <th>管理項目</th>
+                <th>運用方法</th>
+            </tr>
+            <tr>
+                <td><strong>質問内容の変更</strong></td>
+                <td>Googleフォームの編集画面で、質問文や選択肢を自由に追加・削除できます。</td>
+            </tr>
+            <tr>
+                <td><strong>計算ロジック調整</strong></td>
+                <td>Googleスプレッドシート上の数値を書き換えるだけで、金利や返済比率を変更できます。</td>
+            </tr>
+            <tr>
+                <td><strong>AIの知識調整</strong></td>
+                <td>Difyの管理画面から、テキストベースで指示を追加・修正できます。</td>
+            </tr>
+        </table>
+
+        <h2>5. 開発・実装範囲</h2>
+        <ul>
+            <li>LINE公式アカウント リッチメニュー設定</li>
+            <li>診断用Googleフォーム作成（LIFF連携・ID自動入力実装）</li>
+            <li>診断ロジック・通知プログラム開発（Google Apps Script）</li>
+            <li>対話型AI構築（Dify環境構築・プロンプト設計）</li>
+            <li>管理者通知機能・Googleスプレッドシート連携開発</li>
+        </ul>
+
+        <div class="meta-info">
+            本提案書に関するご不明点等は、お気軽にお申し付けください。<br>
+            [あなたの連絡先情報]
+        </div>
+    </div>
+
+</body>
+
+</html>
