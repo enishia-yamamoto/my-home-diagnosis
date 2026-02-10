@@ -355,11 +355,20 @@ class MessageBuilder {
     const color = result.rank === 'A' ? '#06C755' : (result.rank === 'B' ? '#FF9800' : '#E53935');
     const ratio = Math.min(Math.floor((result.safeBudget / result.maxBudget) * 100), 100);
     
-    // ランク別アドバイス
+    // ランク別アドバイス（ランク名は出さず、アドバイス内容で変化をつける）
     let advice = '';
-    if (result.rank === 'A') advice = '余裕のある予算設定です！\n希望エリアのグレードを上げたり、設備にこだわることも可能です。';
-    else if (result.rank === 'B') advice = 'バランスの良い予算です。\n物件価格だけでなく、諸費用や引越し代も考慮して進めましょう。';
-    else advice = '少し予算オーバーの可能性があります。\nエリアを見直すか、自己資金を増やすことを検討しましょう。';
+    let headerText = 'マイホーム適正予算診断';
+    
+    if (result.rank === 'A') {
+      headerText = 'ゆとりある予算計画です✨';
+      advice = '現在の収入に対して余裕のある予算設定です！\n希望エリアのグレードを上げたり、設備にこだわることも十分に可能です。';
+    } else if (result.rank === 'B') {
+      headerText = 'バランスの良い予算計画です👍';
+      advice = '収入に見合った堅実な予算です。\n物件価格だけでなく、諸費用や引越し代も含めたトータルコストで検討を進めましょう。';
+    } else {
+      headerText = '少し工夫が必要な予算計画です🤔';
+      advice = '借入可能額に近い設定になっています。\nエリアを見直すか、頭金を増やすことで、より安心して返済できるプランになります。';
+    }
 
     return {
       type: 'flex',
@@ -371,8 +380,8 @@ class MessageBuilder {
           type: 'box',
           layout: 'vertical',
           contents: [
-            { type: 'text', text: 'マイホーム適正予算診断', color: '#ffffffaa', size: 'xs' },
-            { type: 'text', text: `判定：${result.rank}ランク`, weight: 'bold', color: '#FFFFFF', size: 'xl', margin: 'md' }
+            { type: 'text', text: '診断完了', color: '#ffffffaa', size: 'xs' },
+            { type: 'text', text: headerText, weight: 'bold', color: '#FFFFFF', size: 'md', margin: 'md', wrap: true }
           ],
           backgroundColor: color
         },
@@ -380,7 +389,7 @@ class MessageBuilder {
           type: 'box',
           layout: 'vertical',
           contents: [
-            { type: 'text', text: 'あなたの適正予算', size: 'sm', color: '#888888', align: 'center' },
+            { type: 'text', text: 'おすすめの購入予算', size: 'sm', color: '#888888', align: 'center' },
             { 
               type: 'text', 
               text: `${result.safeBudget.toLocaleString()}万円`, 
@@ -401,7 +410,7 @@ class MessageBuilder {
                   type: 'box',
                   layout: 'horizontal',
                   contents: [
-                    { type: 'text', text: '借入上限額', size: 'sm', color: '#555555', flex: 1 },
+                    { type: 'text', text: '借入可能額（上限）', size: 'sm', color: '#555555', flex: 1 },
                     { type: 'text', text: `${result.maxBudget.toLocaleString()}万円`, size: 'sm', color: '#111111', align: 'end', flex: 1 }
                   ]
                 },
@@ -426,7 +435,7 @@ class MessageBuilder {
                     }
                   ]
                 },
-                { type: 'text', text: `安全圏: ${ratio}%`, size: 'xs', color: '#aaaaaa', align: 'end', margin: 'xs' }
+                { type: 'text', text: `予算充足率: ${ratio}%`, size: 'xs', color: '#aaaaaa', align: 'end', margin: 'xs' }
               ]
             },
             // 月々返済
