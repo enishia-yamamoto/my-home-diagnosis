@@ -10,7 +10,20 @@
  */
 
 // ==========================================
-// 1. APIハンドラ (Main)
+// 1. 設定 (Configuration)
+// ==========================================
+// ★以下の設定値を書き換えてください
+const LINE_CHANNEL_ACCESS_TOKEN = 'YOUR_LINE_ACCESS_TOKEN';
+const DIFY_API_KEY = 'YOUR_DIFY_API_KEY';
+const LIFF_ID = 'YOUR_LIFF_ID'; // 今回はフロントエンド(app.js)で使うが、バックエンドでも必要ならここ
+const RATE_FLOATING = 0.5; // 変動金利 (%)
+const RATE_FIXED = 1.8;    // 固定金利 (%)
+const TERM_YEARS = 35;     // 返済期間 (年)
+const RATIO_SAFE = 20;     // 安全返済比率 (%)
+const RATIO_MAX = 35;      // 上限返済比率 (%)
+
+// ==========================================
+// 2. APIハンドラ (Main)
 // ==========================================
 
 /**
@@ -193,33 +206,21 @@ function createJsonResponse(data) {
 }
 
 // ==========================================
-// 2. 設定管理 (Config)
+// 2. 設定管理 (Config) - 定数参照に変更
 // ==========================================
 class Config {
   constructor() {
-    this.sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Config');
-    this.cache = {}; 
-    this.load();
+    // シート読み込み廃止
   }
 
-  load() {
-    if (!this.sheet) return;
-    const data = this.sheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      const key = data[i][0];
-      const value = data[i][1];
-      if (key) this.cache[key] = value;
-    }
-  }
-
-  get(key) { return this.cache[key]; }
-  get rateFloating() { return Number(this.get('RATE_FLOATING')); }
-  get rateFixed() { return Number(this.get('RATE_FIXED')); }
-  get termYears() { return Number(this.get('TERM_YEARS')); }
-  get ratioSafe() { return Number(this.get('RATIO_SAFE')); }
-  get ratioMax() { return Number(this.get('RATIO_MAX')); }
-  get lineChannelAccessToken() { return this.get('LINE_CHANNEL_ACCESS_TOKEN'); }
-  get difyApiKey() { return this.get('DIFY_API_KEY'); }
+  get(key) { return null; } // 互換性のため残す
+  get rateFloating() { return RATE_FLOATING; }
+  get rateFixed() { return RATE_FIXED; }
+  get termYears() { return TERM_YEARS; }
+  get ratioSafe() { return RATIO_SAFE; }
+  get ratioMax() { return RATIO_MAX; }
+  get lineChannelAccessToken() { return LINE_CHANNEL_ACCESS_TOKEN; }
+  get difyApiKey() { return DIFY_API_KEY; }
 }
 
 function getConfig() { return new Config(); }
