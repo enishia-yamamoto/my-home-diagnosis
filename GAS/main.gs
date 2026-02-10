@@ -12,15 +12,9 @@
 // ==========================================
 // 1. 設定 (Configuration)
 // ==========================================
-// ★以下の設定値を書き換えてください
-const LINE_CHANNEL_ACCESS_TOKEN = 'YOUR_LINE_ACCESS_TOKEN';
-const DIFY_API_KEY = 'YOUR_DIFY_API_KEY';
-const LIFF_ID = 'YOUR_LIFF_ID'; // 今回はフロントエンド(app.js)で使うが、バックエンドでも必要ならここ
-const RATE_FLOATING = 0.5; // 変動金利 (%)
-const RATE_FIXED = 1.8;    // 固定金利 (%)
-const TERM_YEARS = 35;     // 返済期間 (年)
-const RATIO_SAFE = 20;     // 安全返済比率 (%)
-const RATIO_MAX = 35;      // 上限返済比率 (%)
+// APIキーや設定値は「プロジェクトの設定 > スクリプトプロパティ」に保存してください。
+// キー名: LINE_CHANNEL_ACCESS_TOKEN, DIFY_API_KEY, LIFF_ID
+// 設定がない場合は以下のデフォルト値（金利等）が使われます。
 
 // ==========================================
 // 2. APIハンドラ (Main)
@@ -206,21 +200,26 @@ function createJsonResponse(data) {
 }
 
 // ==========================================
-// 2. 設定管理 (Config) - 定数参照に変更
+// 2. 設定管理 (Config) - Script Properties使用
 // ==========================================
 class Config {
   constructor() {
-    // シート読み込み廃止
+    this.props = PropertiesService.getScriptProperties();
   }
 
-  get(key) { return null; } // 互換性のため残す
-  get rateFloating() { return RATE_FLOATING; }
-  get rateFixed() { return RATE_FIXED; }
-  get termYears() { return TERM_YEARS; }
-  get ratioSafe() { return RATIO_SAFE; }
-  get ratioMax() { return RATIO_MAX; }
-  get lineChannelAccessToken() { return LINE_CHANNEL_ACCESS_TOKEN; }
-  get difyApiKey() { return DIFY_API_KEY; }
+  get(key) { return this.props.getProperty(key); }
+  
+  // API Keys (必須)
+  get lineChannelAccessToken() { return this.get('LINE_CHANNEL_ACCESS_TOKEN'); }
+  get difyApiKey() { return this.get('DIFY_API_KEY'); }
+  get liffId() { return this.get('LIFF_ID'); }
+
+  // 計算用定数 (未設定時はデフォルト値)
+  get rateFloating() { return Number(this.get('RATE_FLOATING')) || 0.5; }
+  get rateFixed() { return Number(this.get('RATE_FIXED')) || 1.8; }
+  get termYears() { return Number(this.get('TERM_YEARS')) || 35; }
+  get ratioSafe() { return Number(this.get('RATIO_SAFE')) || 20; }
+  get ratioMax() { return Number(this.get('RATIO_MAX')) || 25; } // デフォルト通常35だが、安全のため25等の調整も可（コード上のデフォルトは35にしておく）
 }
 
 function getConfig() { return new Config(); }
