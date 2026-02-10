@@ -517,18 +517,18 @@ class MessageBuilder {
               height: 'sm',
               action: {
                 type: 'message',
-                label: 'この条件でプロに相談',
+                label: 'プロに相談する',
                 text: `【相談希望】\n予算:${result.safeBudget}万円\nエリア:${result.targetArea}\n条件:${result.mustConditions}`
               }
             },
             {
               type: 'button',
-              style: 'link',
+              style: 'secondary',
               height: 'sm',
               action: {
                 type: 'message',
-                label: '条件を変更して再診断',
-                text: '再診断したいです' // 実際にはメニューからやってもらうが、アクションとしてはあり
+                label: 'この条件でAIに相談',
+                text: `【AI相談】\n予算:${result.safeBudget}万円\nエリア:${result.targetArea}\n条件:${result.mustConditions}\nについて相談したいです。`
               }
             }
           ]
