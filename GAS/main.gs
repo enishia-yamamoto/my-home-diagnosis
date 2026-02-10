@@ -562,8 +562,11 @@ class Dify {
       
       return json.answer || '申し訳ありません。回答を生成できませんでした。';
     } catch (e) {
-      console.error('Dify Error:', e.message);
-      return '現在、システムが応答できません。（管理者へ：GASの実行ログを確認してください）';
+      console.error('Dify Error:', e.toString());
+      logToSheet('Dify Error: ' + e.toString());
+      // APIキー漏洩防止のため、ログには詳細を出さないが、デバッグ時は必要
+      // logToSheet('API Key: ' + this.apiKey); 
+      return '現在、システムが応答できません。（管理者へ：ConfigシートのDIFY_API_KEY設定や、GASのDebugシートのログを確認してください）';
     }
   }
 
