@@ -13,8 +13,13 @@
 // 1. 設定 (Configuration)
 // ==========================================
 // APIキーや設定値は「プロジェクトの設定 > スクリプトプロパティ」に保存してください。
-// キー名: LINE_CHANNEL_ACCESS_TOKEN, DIFY_API_KEY, LIFF_ID
-// 設定がない場合は以下のデフォルト値（金利等）が使われます。
+// キー名: LINE_CHANNEL_ACCESS_TOKEN, DIFY_API_KEY, LIFF_ID, RATE_FLOATING, RATE_FIXED等
+// ※ スクリプトプロパティ未設定時は以下のデフォルト値が適用されます
+const DEFAULT_RATE_FLOATING = 0.5; // 変動金利 (%)
+const DEFAULT_RATE_FIXED = 1.8;    // 固定金利 (%)
+const DEFAULT_TERM_YEARS = 35;     // 返済期間 (年)
+const DEFAULT_RATIO_SAFE = 0.20;   // 安全返済比率 (20%)
+const DEFAULT_RATIO_MAX = 0.35;    // 上限返済比率 (35%)
 
 // ==========================================
 // 2. APIハンドラ (Main)
@@ -214,12 +219,22 @@ class Config {
   get difyApiKey() { return this.get('DIFY_API_KEY'); }
   get liffId() { return this.get('LIFF_ID'); }
 
-  // 計算用定数 (未設定時はデフォルト値)
-  get rateFloating() { return Number(this.get('RATE_FLOATING')) || 0.5; }
-  get rateFixed() { return Number(this.get('RATE_FIXED')) || 1.8; }
-  get termYears() { return Number(this.get('TERM_YEARS')) || 35; }
-  get ratioSafe() { return Number(this.get('RATIO_SAFE')) || 20; }
-  get ratioMax() { return Number(this.get('RATIO_MAX')) || 25; } // デフォルト通常35だが、安全のため25等の調整も可（コード上のデフォルトは35にしておく）
+  // 計算用定数 (未設定時はデフォルト値、パーセント値の場合は小数に変換)
+  get rateFloating() { return Number(this.get('RATE_FLOATING')) || DEFAULT_RATE_FLOATING; }
+  get rateFixed() { return Number(this.get('RATE_FIXED')) || DEFAULT_RATE_FIXED; }
+  get termYears() { return Number(this.get('TERM_YEARS')) || DEFAULT_TERM_YEARS; }
+  
+  // 返済比率: 1より大きい値(例: 20)が入っていたら 0.2 に変換する安全策
+  get ratioSafe() { 
+    let val = Number(this.get('RATIO_SAFE')) || DEFAULT_RATIO_SAFE;
+    if (val > 1) val = val / 100;
+    return val;
+  }
+  get ratioMax() { 
+    let val = Number(this.get('RATIO_MAX')) || DEFAULT_RATIO_MAX; 
+    if (val > 1) val = val / 100;
+    return val;
+  }
 }
 
 function getConfig() { return new Config(); }
