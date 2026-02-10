@@ -278,7 +278,10 @@ class Calculator {
       safeBudget: safeBudget,
       monthlyPaymentMax: Math.floor(maxMonthlyPayment),
       monthlyPaymentSafe: Math.floor(safeMonthlyPayment),
-      rank: rank
+      monthlyPaymentMax: Math.floor(maxMonthlyPayment),
+      monthlyPaymentSafe: Math.floor(safeMonthlyPayment),
+      rank: rank,
+      propertyType: input.propertyType // 追加
     };
   }
 }
@@ -438,14 +441,53 @@ class MessageBuilder {
             // 希望条件
             {
               type: 'text',
-              text: '希望条件',
+              text: 'あなたの希望整理シート',
               weight: 'bold',
               size: 'sm',
               margin: 'xl',
               color: '#333333'
             },
-            { type: 'text', text: `エリア: ${result.targetArea}`, size: 'xs', color: '#666666', margin: 'sm' },
-            { type: 'text', text: `条件: ${result.mustConditions}`, size: 'xs', color: '#666666', margin: 'xs', wrap: true }
+            {
+              type: 'box',
+              layout: 'vertical',
+              margin: 'sm',
+              spacing: 'xs',
+              contents: [
+                {
+                  type: 'box',
+                  layout: 'horizontal',
+                  contents: [
+                    { type: 'text', text: '物件種別', size: 'xs', color: '#888888', flex: 1 },
+                    { type: 'text', text: result.propertyType || '未指定', size: 'xs', color: '#333333', flex: 2 }
+                  ]
+                },
+                {
+                  type: 'box',
+                  layout: 'horizontal',
+                  contents: [
+                    { type: 'text', text: '希望エリア', size: 'xs', color: '#888888', flex: 1 },
+                    { type: 'text', text: result.targetArea, size: 'xs', color: '#333333', flex: 2 }
+                  ]
+                },
+                {
+                  type: 'box',
+                  layout: 'horizontal',
+                  contents: [
+                    { type: 'text', text: '現在家賃', size: 'xs', color: '#888888', flex: 1 },
+                    { type: 'text', text: `${Number(result.currentRent).toLocaleString()}円`, size: 'xs', color: '#333333', flex: 2 }
+                  ]
+                },
+                {
+                  type: 'box',
+                  layout: 'horizontal',
+                  margin: 'md',
+                  contents: [
+                    { type: 'text', text: '重視条件', size: 'xs', color: '#888888', flex: 1 },
+                    { type: 'text', text: result.mustConditions || '特になし', size: 'xs', color: '#00B900', weight: 'bold', flex: 2, wrap: true }
+                  ]
+                }
+              ]
+            }
           ]
         },
         footer: {
