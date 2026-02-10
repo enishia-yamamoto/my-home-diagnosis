@@ -56,11 +56,25 @@
                     <option value="夫婦+子3人以上">夫婦+子3人以上</option>
                     <option value="その他">その他</option>
                 </select>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>物件種別</label>
+                <select id="propertyType" required>
+                    <option value="">選択してください</option>
+                    <!-- form_config.jsonから動的生成 -->
+                </select>
             </div>
 
             <div class="form-group">
                 <label>希望エリア</label>
-                <input type="text" id="targetArea" required placeholder="例: つくば市、守谷市など">
+                <select id="targetArea" required>
+                    <option value="">選択してください</option>
+                    <!-- form_config.jsonから動的生成 -->
+                </select>
+                <input type="text" id="targetAreaOther" placeholder="エリア詳細を入力してください"
+                    style="display:none; margin-top:5px;">
             </div>
 
             <div class="form-group">

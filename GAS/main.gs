@@ -16,6 +16,26 @@
 /**
  * 共通処理: OPTIONSリクエストへの対応 (CORSプリフライト用)
  */
+// ==========================================
+// デバッグログ用関数
+// ==========================================
+function logToSheet(msg) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName('Debug');
+    if (!sheet) {
+      sheet = ss.insertSheet('Debug');
+      sheet.appendRow(['Timestamp', 'Message']);
+    }
+    sheet.appendRow([new Date(), msg]);
+  } catch (e) {
+    console.error('Sheet Log Error:', e);
+  }
+}
+
+/**
+ * 共通処理: OPTIONSリクエストへの対応 (CORSプリフライト用)
+ */
 function doOptions(e) {
   return ContentService.createTextOutput('').setMimeType(ContentService.MimeType.TEXT);
 }
@@ -24,24 +44,61 @@ function doOptions(e) {
  * POSTリクエストハンドラ
  */
 function doPost(e) {
-  let json;
   try {
-    json = JSON.parse(e.postData.contents);
+    console.log('doPost START');
+    logToSheet('doPost START');
+    
+    // リクエスト内容の確認
+    if (e && e.postData) {
+      console.log('ContentType:', e.postData.type);
+      logToSheet('ContentType: ' + e.postData.type);
+      console.log('Contents:', e.postData.contents);
+      logToSheet('Contents: ' + e.postData.contents);
+    } else {
+      console.error('No postData received');
+      logToSheet('Error: No postData received');
+      return createJsonResponse({ status: 'error', message: 'No postData' });
+    }
+
+    let json;
+    try {
+      json = JSON.parse(e.postData.contents);
+    } catch (error) {
+      console.error('JSON Parse Error:', error);
+      logToSheet('Error: JSON Parse Error: ' + error.message);
+      return createJsonResponse({ status: 'error', message: 'Invalid JSON' });
+    }
+
+    // 診断データ送信の場合
+    if (json.type === 'diagnosis') {
+      console.log('Processing Diagnosis API');
+      logToSheet('Processing Diagnosis API');
+      return handleDiagnosisApi(json.data);
+    }
+  
+    // LINE Webhookの場合
+    if (json.events) {
+      console.log('Processing LINE Webhook');
+      logToSheet('Processing LINE Webhook');
+      return handleLineWebhook(json);
+    }
+
+    // どのタイプにもマッチしない場合
+    if (json.userId) {
+       console.log('Assuming flat diagnosis data based on userId');
+       logToSheet('Assuming flat diagnosis data based on userId');
+       return handleDiagnosisApi(json);
+    }
+
+    console.warn('Unknown request type:', JSON.stringify(json));
+    logToSheet('Error: Unknown request type: ' + JSON.stringify(json));
+    return createJsonResponse({ status: 'error', message: 'Unknown request type' });
+
   } catch (error) {
-    return createJsonResponse({ status: 'error', message: 'Invalid JSON' });
+    console.error('Global Error in doPost:', error);
+    logToSheet('Global Error in doPost: ' + error.toString());
+    return createJsonResponse({ status: 'error', message: error.toString() });
   }
-
-  // 診断データ送信の場合
-  if (json.type === 'diagnosis') {
-    return handleDiagnosisApi(json.data);
-  }
-
-  // LINE Webhookの場合
-  if (json.events) {
-    return handleLineWebhook(json);
-  }
-
-  return createJsonResponse({ status: 'error', message: 'Unknown request type' });
 }
 
 /**
@@ -60,12 +117,15 @@ function handleDiagnosisApi(data) {
     // 計算実行
     const result = calc.calculateAll(data);
 
-    // ログ保存
-    saveLog(result);
+    // ユーザーデータ保存（上書き）
+    saveUserData(data.userId, {
+      ...result,
+      conversationId: getConversationId(data.userId) // 既存の会話IDがあれば維持
+    });
 
     // LINEへ通知
     const flexMessage = MessageBuilder.createDiagnosisResult(result);
-    // line.pushMessage(result.userId, flexMessage); // 必要に応じて有効化
+    line.pushMessage(result.userId, flexMessage);
 
     // 結果返却
     return createJsonResponse({
@@ -110,15 +170,17 @@ function handleLineEvent(event) {
       return;
     }
 
-    // 最新の診断結果を取得（コンテキスト用）
-    const diagnosis = getLatestDiagnosis(userId);
+    // ユーザーデータ取得
+    const userData = getUserData(userId);
+    const conversationId = userData ? userData.conversationId : null;
     
     // Dify応答
     let answer;
-    if (diagnosis) {
-      answer = dify.chatWithDiagnosis(userId, text, diagnosis);
+    if (userData) {
+      // 診断データがあればContextとして渡す
+      answer = dify.chatWithDiagnosis(userId, text, userData, conversationId);
     } else {
-      answer = dify.chat(userId, text, {});
+      answer = dify.chat(userId, text, {}, conversationId);
     }
 
     line.replyMessage(replyToken, line.createTextMessage(answer));
@@ -208,7 +270,9 @@ class Calculator {
       ownCapital: capital,
       currentRent: input.currentRent,
       familyStructure: input.familyStructure,
+      propertyType: input.propertyType,
       targetArea: input.targetArea,
+      targetAreaOther: input.targetAreaOther,
       mustConditions: input.mustConditions,
       maxBudget: maxBudget,
       safeBudget: safeBudget,
@@ -230,11 +294,30 @@ class LINE {
 
   pushMessage(userId, messages) {
     if (!Array.isArray(messages)) messages = [messages];
-    UrlFetchApp.fetch(`${this.apiUrl}/push`, {
-      method: 'post',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.token}` },
-      payload: JSON.stringify({ to: userId, messages: messages })
-    });
+    try {
+      const response = UrlFetchApp.fetch(`${this.apiUrl}/push`, {
+        method: 'post',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.token}` },
+        payload: JSON.stringify({ to: userId, messages: messages }),
+        muteHttpExceptions: true
+      });
+      const responseCode = response.getResponseCode();
+      const responseBody = response.getContentText();
+      if (responseCode !== 200) {
+        console.error('LINE Push Failed:', responseCode, responseBody);
+        logToSheet('LINE Push Failed: ' + responseCode + ' ' + responseBody);
+        console.error('Payload:', JSON.stringify({ to: userId, messages: messages }));
+        logToSheet('Payload: ' + JSON.stringify({ to: userId, messages: messages }));
+      } else {
+        console.log('LINE Push Success');
+        logToSheet('LINE Push Success');
+      }
+    } catch (e) {
+      console.error('LINE Push Error:', e);
+      logToSheet('LINE Push Error: ' + e.toString());
+      console.error('Payload:', JSON.stringify({ to: userId, messages: messages }));
+      logToSheet('Payload: ' + JSON.stringify({ to: userId, messages: messages }));
+    }
   }
 
   replyMessage(replyToken, messages) {
@@ -252,53 +335,146 @@ class LINE {
 class MessageBuilder {
   static createDiagnosisResult(result) {
     const color = result.rank === 'A' ? '#06C755' : (result.rank === 'B' ? '#FF9800' : '#E53935');
+    const ratio = Math.min(Math.floor((result.safeBudget / result.maxBudget) * 100), 100);
+    
+    // ランク別アドバイス
+    let advice = '';
+    if (result.rank === 'A') advice = '余裕のある予算設定です！\n希望エリアのグレードを上げたり、設備にこだわることも可能です。';
+    else if (result.rank === 'B') advice = 'バランスの良い予算です。\n物件価格だけでなく、諸費用や引越し代も考慮して進めましょう。';
+    else advice = '少し予算オーバーの可能性があります。\nエリアを見直すか、自己資金を増やすことを検討しましょう。';
+
     return {
       type: 'flex',
       altText: 'マイホーム診断結果',
       contents: {
         type: 'bubble',
+        size: 'mega', // サイズ大きく
         header: {
           type: 'box',
           layout: 'vertical',
-          contents: [{ type: 'text', text: `診断結果：${result.rank}ランク`, weight: 'bold', color: '#FFFFFF', size: 'lg' }],
-          backgroundColor: color
-        },
-        hero: {
-          type: 'box',
-          layout: 'vertical',
           contents: [
-            { type: 'text', text: '適正予算目安', size: 'xs', color: '#aaaaaa', align: 'center' },
-            { type: 'text', text: `${result.safeBudget.toLocaleString()}万円`, size: 'xxl', weight: 'bold', color: '#333333', align: 'center', margin: 'md' }
+            { type: 'text', text: 'マイホーム適正予算診断', color: '#ffffffaa', size: 'xs' },
+            { type: 'text', text: `判定：${result.rank}ランク`, weight: 'bold', color: '#FFFFFF', size: 'xl', margin: 'md' }
           ],
-          paddingAll: 'xl'
+          backgroundColor: color
         },
         body: {
           type: 'box',
           layout: 'vertical',
           contents: [
+            { type: 'text', text: 'あなたの適正予算', size: 'sm', color: '#888888', align: 'center' },
+            { 
+              type: 'text', 
+              text: `${result.safeBudget.toLocaleString()}万円`, 
+              size: 'xxl', 
+              weight: 'bold', 
+              color: '#333333', 
+              align: 'center', 
+              margin: 'sm' 
+            },
+            { type: 'separator', margin: 'xl' },
+            // 予算サマリー
+            {
+              type: 'box',
+              layout: 'vertical',
+              margin: 'xl',
+              contents: [
+                {
+                  type: 'box',
+                  layout: 'horizontal',
+                  contents: [
+                    { type: 'text', text: '借入上限額', size: 'sm', color: '#555555', flex: 1 },
+                    { type: 'text', text: `${result.maxBudget.toLocaleString()}万円`, size: 'sm', color: '#111111', align: 'end', flex: 1 }
+                  ]
+                },
+                // プログレスバー背景
+                {
+                  type: 'box',
+                  layout: 'vertical',
+                  margin: 'sm',
+                  backgroundColor: '#EBEBEB',
+                  height: '6px',
+                  cornerRadius: '3px',
+                  contents: [
+                    // プログレスバー本体
+                    {
+                      type: 'box',
+                      layout: 'vertical',
+                      width: `${ratio}%`,
+                      backgroundColor: color,
+                      height: '6px',
+                      cornerRadius: '3px',
+                      contents: [] // 追加: 空でもcontentsは必須
+                    }
+                  ]
+                },
+                { type: 'text', text: `安全圏: ${ratio}%`, size: 'xs', color: '#aaaaaa', align: 'end', margin: 'xs' }
+              ]
+            },
+            // 月々返済
             {
               type: 'box',
               layout: 'horizontal',
+              margin: 'lg',
               contents: [
-                { type: 'text', text: '借入上限', size: 'sm', color: '#555555', flex: 1 },
-                { type: 'text', text: `${result.maxBudget.toLocaleString()}万円`, size: 'sm', color: '#111111', align: 'end', flex: 1 }
-              ],
-              margin: 'md'
+                { type: 'text', text: '月々返済目安', size: 'sm', color: '#555555', flex: 1 },
+                { type: 'text', text: `${result.monthlyPaymentSafe.toLocaleString()}円`, size: 'md', weight: 'bold', color: '#111111', align: 'end', flex: 1 }
+              ]
             },
-            { type: 'separator', margin: 'md' },
-            { type: 'text', text: '希望条件', weight: 'bold', size: 'sm', margin: 'lg', color: '#555555' },
-            { type: 'text', text: `エリア: ${result.targetArea}`, size: 'xs', color: '#666666', margin: 'sm' }
+            { type: 'separator', margin: 'xl' },
+            // アドバイス
+            {
+              type: 'box',
+              layout: 'vertical',
+              margin: 'xl',
+              backgroundColor: '#f8f8f8',
+              cornerRadius: '8px',
+              paddingAll: 'md',
+              contents: [
+                { type: 'text', text: '💡 アドバイス', weight: 'bold', size: 'sm', color: color },
+                { type: 'text', text: advice, size: 'xs', color: '#555555',  wrap: true, margin: 'sm', lineHeight: '1.6' }
+              ]
+            },
+            // 希望条件
+            {
+              type: 'text',
+              text: '希望条件',
+              weight: 'bold',
+              size: 'sm',
+              margin: 'xl',
+              color: '#333333'
+            },
+            { type: 'text', text: `エリア: ${result.targetArea}`, size: 'xs', color: '#666666', margin: 'sm' },
+            { type: 'text', text: `条件: ${result.mustConditions}`, size: 'xs', color: '#666666', margin: 'xs', wrap: true }
           ]
         },
         footer: {
           type: 'box',
           layout: 'vertical',
-          contents: [{
-            type: 'button',
-            style: 'primary',
-            color: color,
-            action: { type: 'message', label: 'この条件でプロに相談', text: `【相談希望】\n予算:${result.safeBudget}万円\nエリア:${result.targetArea}` }
-          }]
+          spacing: 'sm',
+          contents: [
+            {
+              type: 'button',
+              style: 'primary',
+              color: color,
+              height: 'sm',
+              action: {
+                type: 'message',
+                label: 'この条件でプロに相談',
+                text: `【相談希望】\n予算:${result.safeBudget}万円\nエリア:${result.targetArea}\n条件:${result.mustConditions}`
+              }
+            },
+            {
+              type: 'button',
+              style: 'link',
+              height: 'sm',
+              action: {
+                type: 'message',
+                label: '条件を変更して再診断',
+                text: '再診断したいです' // 実際にはメニューからやってもらうが、アクションとしてはあり
+              }
+            }
+          ]
         }
       }
     };
@@ -311,66 +487,153 @@ class MessageBuilder {
 class Dify {
   constructor(config) {
     this.apiKey = config.difyApiKey;
-    this.apiUrl = 'https://api.dify.ai/v1';
+    this.apiUrl = 'https://ai-works.xvps.jp/v1';
   }
 
-  chat(userId, query, inputs = {}) {
+  chat(userId, query, inputs = {}, conversationId = null) {
     try {
+      const payload = {
+        inputs: inputs,
+        query: query,
+        response_mode: "blocking",
+        user: userId,
+        conversation_id: conversationId || "",
+        files: []
+      };
+      
       const response = UrlFetchApp.fetch(`${this.apiUrl}/chat-messages`, {
         method: 'post',
         contentType: 'application/json',
         headers: { 'Authorization': `Bearer ${this.apiKey}` },
-        payload: JSON.stringify({
-          inputs: inputs, query: query, response_mode: "blocking",
-          user: userId, files: []
-        }),
+        payload: JSON.stringify(payload),
         muteHttpExceptions: true
       });
       const json = JSON.parse(response.getContentText());
-      return json.answer || 'エラーが発生しました';
+      if (response.getResponseCode() !== 200) {
+        throw new Error(`Dify API Error: ${response.getResponseCode()} ${JSON.stringify(json)}`);
+      }
+      
+      // 会話IDを保存
+      if (json.conversation_id) {
+        saveUserConversationId(userId, json.conversation_id);
+      }
+      
+      return json.answer || '申し訳ありません。回答を生成できませんでした。';
     } catch (e) {
-      console.error('Dify Error:', e);
-      return 'システム混雑中です。';
+      console.error('Dify Error:', e.message);
+      return '現在、システムが応答できません。（管理者へ：GASの実行ログを確認してください）';
     }
   }
 
-  chatWithDiagnosis(userId, query, diagnosis) {
+  chatWithDiagnosis(userId, query, diagnosis, conversationId) {
     return this.chat(userId, query, {
-      income: diagnosis.annualIncome,
+      incom: diagnosis.annualIncome,
       budget: diagnosis.safeBudget,
       area: diagnosis.targetArea,
-      conditions: diagnosis.mustConditions
-    });
+      conditions: diagnosis.mustConditions,
+      family: diagnosis.familyStructure
+    }, conversationId);
   }
 }
 
 // ==========================================
 // 6. ユーティリティ (Log, GetDiagnosis)
 // ==========================================
-function saveLog(result) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName('Log');
-  if (!sheet) {
-    sheet = ss.insertSheet('Log');
-    sheet.appendRow(['Timestamp', 'UserId', 'AnnualIncome', 'SafeBudget', 'Rank', 'Area']);
-  }
-  sheet.appendRow([new Date(), result.userId, result.annualIncome, result.safeBudget, result.rank, result.targetArea]);
-}
+// ==========================================
+// 6. ユーザーデータ管理 (Users Sheet)
+// ==========================================
+const USERS_SHEET_NAME = 'Users';
 
-function getLatestDiagnosis(userId) {
+function getUserData(userId) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Log');
+  const sheet = ss.getSheetByName(USERS_SHEET_NAME);
   if (!sheet) return null;
+  
   const data = sheet.getDataRange().getValues();
-  for (let i = data.length - 1; i >= 1; i--) {
-    if (data[i][1] === userId) {
+  // ヘッダー: UserId, AnnualIncome, OwnCapital, CurrentRent, Family, Area, Conditions, SafeBudget, MaxBudget, Rank, ConversationId, Updated
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === userId) {
       return {
-        annualIncome: data[i][2],
-        safeBudget: data[i][3],
+        userId: data[i][0],
+        annualIncome: data[i][1],
+        ownCapital: data[i][2],
+        currentRent: data[i][3],
+        familyStructure: data[i][4],
         targetArea: data[i][5],
-        mustConditions: ''
+        mustConditions: data[i][6],
+        safeBudget: data[i][7],
+        maxBudget: data[i][8],
+        rank: data[i][9],
+        conversationId: data[i][10]
       };
     }
   }
   return null;
+}
+
+function saveUserData(userId, data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(USERS_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(USERS_SHEET_NAME);
+    sheet.appendRow([
+      'UserId', 'AnnualIncome', 'OwnCapital', 'CurrentRent', 'FamilyStructure', 'PropertyType',
+      'TargetArea', 'MustConditions', 'SafeBudget', 'MaxBudget', 'Rank', 
+      'ConversationId', 'Updated'
+    ]);
+  }
+  
+  const rows = sheet.getDataRange().getValues();
+  let rowIndex = -1;
+  
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === userId) {
+      rowIndex = i + 1;
+      break;
+    }
+  }
+  
+  // エリアの加工（その他入力がある場合）
+  let finalArea = data.targetArea || '';
+  if (finalArea.includes('その他') && data.targetAreaOther) {
+    finalArea = `その他（${data.targetAreaOther}）`;
+  }
+
+  // 更新データの準備
+  const rowData = [
+    userId,
+    data.annualIncome || '',
+    data.ownCapital || '',
+    data.currentRent || '',
+    data.familyStructure || '',
+    data.propertyType || '',
+    finalArea,
+    data.mustConditions || '',
+    data.safeBudget || '',
+    data.maxBudget || '',
+    data.rank || '',
+    data.conversationId || '',
+    new Date()
+  ];
+
+  if (rowIndex > 0) {
+    // 既存行の更新 (ConversationIdが空の場合は既存を維持する処理を入れるべきだが、
+    // 引数 data.conversationId に existing value を渡すことで対応)
+    sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
+  } else {
+    // 新規作成
+    sheet.appendRow(rowData);
+  }
+}
+
+function saveUserConversationId(userId, conversationId) {
+  const userData = getUserData(userId) || {};
+  userData.conversationId = conversationId;
+  saveUserData(userId, userData);
+}
+
+// 既存の saveLog, getConversationId, saveConversationId, getLatestDiagnosis は削除
+function getConversationId(userId) {
+  const data = getUserData(userId);
+  return data ? data.conversationId : null;
 }

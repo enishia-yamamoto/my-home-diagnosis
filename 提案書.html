@@ -168,8 +168,7 @@
 
     <div class="container">
         <div style="text-align: right; margin-bottom: 20px;">
-            202X年X月X日<br>
-            [あなたの名前/屋号]
+            AIワークス 山本
         </div>
 
         <h1>LINE公式アカウント活用<br>「マイホーム適正予算診断」チャットボット導入ご提案書</h1>
@@ -196,21 +195,62 @@
             従来の「一方的なFAQ」ではなく、ユーザーの回答結果をシステムが記憶し、その後の提案に活かす「コンシェルジュ型」の体験を提供します。
         </p>
 
-        <h2>2. 提案システム構成：ハイブリッドAIアーキテクチャ</h2>
+        <h2>2. 導入効果：As-Is / To-Be</h2>
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <tr style="background-color: #eee;">
+                <th style="padding: 15px; border: 1px solid #ccc; width: 45%;">Before (導入前)</th>
+                <th style="padding: 15px; border: 1px solid #ccc; width: 10%; text-align: center;">➡</th>
+                <th
+                    style="padding: 15px; border: 1px solid #ccc; width: 45%; background-color: #e8f5e9; color: #2e7d32;">
+                    After (導入後)</th>
+            </tr>
+            <tr>
+                <td style="padding: 15px; border: 1px solid #ccc; vertical-align: top;">
+                    <strong>ユーザーの悩み</strong><br>
+                    「自分の予算がわからず、ポータルサイトをただ眺めるだけ」<br>
+                    「不動産屋に問い合わせると営業されそうで怖い」
+                </td>
+                <td
+                    style="padding: 15px; border: 1px solid #ccc; text-align: center; vertical-align: middle; font-size: 1.5em; color: #ccc;">
+                    ➡</td>
+                <td style="padding: 15px; border: 1px solid #ccc; vertical-align: top; background-color: #f1f8e9;">
+                    <strong>自分軸の発見</strong><br>
+                    「3分で適正予算と安全圏を把握できる」<br>
+                    「診断結果をもとに、LINEで気軽に相談できる」
+                </td>
+            </tr>
+            <tr>
+                <td style="padding: 15px; border: 1px solid #ccc; vertical-align: top;">
+                    <strong>貴社の課題</strong><br>
+                    「年収や希望条件のヒアリングに時間がかかる」<br>
+                    「見込みの薄い顧客対応にリソースを割かれる」
+                </td>
+                <td
+                    style="padding: 15px; border: 1px solid #ccc; text-align: center; vertical-align: middle; font-size: 1.5em; color: #ccc;">
+                    ➡</td>
+                <td style="padding: 15px; border: 1px solid #ccc; vertical-align: top; background-color: #f1f8e9;">
+                    <strong>高効率な提案</strong><br>
+                    「相談開始時点で、予算・年収・希望エリアを把握済み」<br>
+                    「確度の高い顧客に集中してアプローチ可能」
+                </td>
+            </tr>
+        </table>
+
+        <h2>3. 提案システム構成：ハイブリッドAIアーキテクチャ</h2>
         <p>
-            運用の柔軟性とコストパフォーマンスを最大化するため、以下の技術構成を採用します。
+            運用の柔軟性とコストパフォーマンスを向上させるため、以下の技術構成を採用します。
         </p>
 
-        <h3>① 入力フォーム：Googleフォーム（LIFF連携）</h3>
+        <h3>① 入力フォーム：オリジナル診断アプリ（LINE LIFF）</h3>
         <ul>
-            <li><strong>最大のメリット：</strong> 質問項目の追加・修正・削除が、貴社の管理画面から自由自在に行えます。</li>
-            <li><strong>データ管理：</strong> 全回答データが自動的にGoogleスプレッドシートに蓄積されるため、顧客リストの作成や分析が容易です。</li>
+            <li><strong>主な特長：</strong> LINEアプリ内で完結する、スマートフォンに最適化された入力フォームを提供します。</li>
+            <li><strong>データ管理：</strong> ユーザーの回答データは自動的にGoogleスプレッドシートに蓄積されるため、顧客リストの作成や分析が容易です。</li>
         </ul>
 
         <h3>② 診断ロジック（GAS自動計算）</h3>
         <ul>
-            <li><strong>役割：</strong> フォームから送信されたデータを瞬時に解析し、「借入可能額」と「適正予算」を厳密に計算します。</li>
-            <li><strong>通知：</strong> 計算結果をLINEのトーク画面へ即座にプッシュ通知します。</li>
+            <li><strong>役割：</strong> フォームから送信されたデータを解析し、「借入可能額」と「適正予算」を計算します。</li>
+            <li><strong>通知：</strong> 計算結果をLINEのトーク画面へ即座にプッシュ通知します（貴社指定の計算ロジックがある場合、それに合わせて調整可能です）。</li>
         </ul>
 
         <h3>③ 対話型AIエンジン（Dify導入）</h3>
@@ -219,38 +259,61 @@
             <li><strong>特徴：</strong> 診断で得た「予算」や「条件」をAIに記憶させます。ユーザーが「この予算で買える？」と聞くと、AIは診断結果を考慮した回答を行います。</li>
         </ul>
 
-        <h2>3. ユーザー体験フロー（UX）</h2>
+        <h2>4. ユーザー体験フロー（UX）</h2>
         <p>
             アプリの切り替えを感じさせないスムーズな設計で、離脱を防ぎます。
         </p>
 
         <h3>Step 1：診断スタート</h3>
-        <p>リッチメニューの「診断開始」をタップすると、LINEアプリ上に診断フォーム（Googleフォーム）がポップアップ表示されます。</p>
+        <p>リッチメニューの「診断開始」をタップすると、LINEアプリ上に診断フォーム（専用アプリ）がポップアップ表示されます。</p>
 
         <h3>Step 2：入力・送信</h3>
         <p>
-            使い慣れたインターフェースで、年収、家族構成、エリアなどを入力していただきます。<br>
-            <span class="note">※システム連携用のID項目は自動入力されます。誤操作防止のためのロック機能（入力規則）を実装します。</span>
+            使い慣れた操作性の専用フォームで、年収、家族構成、エリアなどを入力していただきます。<br>
         </p>
 
         <h3>Step 3：即時診断（Flex Message）</h3>
         <p>送信後、システムが計算を行い、以下のような「診断カード」がLINEトーク画面に届きます。</p>
+        <p>
+            <strong style="color: #d32f2f;">※PDF出力ではなく「Flex Message」を採用した理由</strong><br>
+            スマートフォン画面ではPDFファイルのダウンロード・閲覧操作が小さなストレスとなります。
+            本システムでは、LINEアプリ画面上で「パッと見てわかる」即時性を最優先し、リッチなグラフィックメッセージでの直接表示形式を採用しました。
+        </p>
 
         <div class="flex-message-mock">
-            <div class="flex-header">🏠 診断結果：Aランク</div>
-            <div style="font-size: 0.9em; color: #555;">〇〇様の無理のない購入予算</div>
-            <div class="flex-main">3,200万円</div>
-            <div style="font-size: 0.8em; color: #777; text-align: center;">（銀行借入上限目安：4,100万円）</div>
-            <hr style="border: 0; border-top: 1px dashed #ccc; margin: 15px 0;">
-            <div style="font-weight: bold; margin-bottom: 5px;">✅ 重視する条件</div>
-            <ul style="background: none; border: none; padding: 0; margin: 0; list-style: none; font-size: 0.9em;">
-                <li>・駐車場2台以上</li>
-                <li>・つくばエリア</li>
-            </ul>
+            <div
+                style="border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-weight: bold; color: #333;">年収: 500万円</div>
+                <div style="font-size: 0.8em; background: #eee; padding: 2px 8px; border-radius: 4px;">夫婦合算</div>
+            </div>
+
+            <div style="background: #f0f8ff; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                <div style="font-size: 0.8em; color: #666; text-align: center;">🏦 借入可能額</div>
+                <div style="text-align: center; font-size: 1.2em; font-weight: bold; color: #333;">3,900万円</div>
+            </div>
+
+            <div style="background: #e8f5e9; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                <div style="font-size: 0.8em; color: #2e7d32; text-align: center;">✅ あなたの適正予算</div>
+                <div style="text-align: center; font-size: 1.5em; font-weight: bold; color: #2e7d32;">3,200万円</div>
+            </div>
+
+            <div style="position: relative; height: 10px; background: #eee; border-radius: 5px; margin-bottom: 5px;">
+                <div style="position: absolute; width: 80%; height: 100%; background: #06C755; border-radius: 5px;">
+                </div>
+            </div>
+            <div style="text-align: right; font-size: 0.7em; color: #aaa; margin-bottom: 15px;">安全圏: 80%</div>
+
+            <div style="background: #fff3e0; padding: 10px; border-radius: 5px; margin-bottom: 10px; font-size: 0.8em;">
+                <strong style="color: #ff9800;">💡 アドバイス</strong><br>
+                余裕のある予算設定です！希望エリアのグレードを上げたり、設備にこだわることも可能です。
+            </div>
+
             <div class="btn-mock">
-                この条件でプロに相談する ＞
+                ▼ AIに相談・質問する
             </div>
         </div>
+
+
 
         <h3>Step 4：相談・引き継ぎフロー（重要）</h3>
         <div class="flow-box">
@@ -263,7 +326,7 @@
             担当者様は、ユーザーの診断結果を確認した上で、LINE公式アカウントの管理画面から個別にアプローチを開始できます。
         </div>
 
-        <h2>4. 管理・運用面の特徴</h2>
+        <h2>5. 管理・運用面の特徴</h2>
         <p>
             貴社にて運用・調整がしやすい構成としています。
         </p>
@@ -274,11 +337,18 @@
             </tr>
             <tr>
                 <td><strong>質問内容の変更</strong></td>
-                <td>Googleフォームの編集画面で、質問文や選択肢を自由に追加・削除できます。</td>
+                <td>プログラムの更新が必要です（将来的な拡張として、設定画面の開発も可能です）。</td>
             </tr>
             <tr>
                 <td><strong>計算ロジック調整</strong></td>
-                <td>Googleスプレッドシート上の数値を書き換えるだけで、金利や返済比率を変更できます。</td>
+                <td>Googleスプレッドシート上の数値を書き換えるだけで、金利や返済比率を変更できます。<br>
+                    <span class="note" style="display:block; margin-top:5px;">※エリアごとの相場や、注文住宅の坪単価設定などもここで行います。</span>
+                </td>
+            </tr>
+            <tr>
+                <td><strong>全国展開への拡張</strong></td>
+                <td>システム基盤はクラウド（GAS）のため、アクセス数が増加しても安定稼働します。<br>
+                    エリア追加はスプレッドシートへの行追加のみで対応可能です。</td>
             </tr>
             <tr>
                 <td><strong>AIの知識調整</strong></td>
@@ -286,18 +356,103 @@
             </tr>
         </table>
 
-        <h2>5. 開発・実装範囲</h2>
+        <h2>6. 開発・実装範囲</h2>
         <ul>
-            <li>LINE公式アカウント リッチメニュー設定</li>
-            <li>診断用Googleフォーム作成（LIFF連携・ID自動入力実装）</li>
+            <li>LINE公式アカウント リッチメニュー設定
+                <ul>
+                    <li style="font-size: 0.9em; color: #666;">※基本的なデザイン作成は弊社で行いますが、複雑なデザインをご希望の場合は貴社にてご用意ください。</li>
+                </ul>
+            </li>
+            <li>オリジナル診断アプリ開発（GitHub Pages / LIFF連携）</li>
             <li>診断ロジック・通知プログラム開発（Google Apps Script）</li>
             <li>対話型AI構築（Dify環境構築・プロンプト設計）</li>
             <li>管理者通知機能・Googleスプレッドシート連携開発</li>
         </ul>
 
+        <h2>7. 費用・契約について</h2>
+
+        <h3>■ 初期開発・導入費用</h3>
+        <div class="highlight-box"
+            style="text-align: center; font-size: 1.2em; border-color: #00B900; background-color: #f0fdf4;">
+            <strong>御見積金額：300,000円（税別）</strong><br>
+            <span style="font-size: 0.8em; color: #666;">（税込価格：330,000円）</span>
+        </div>
+        <p>上記費用には以下の項目が含まれます：</p>
+        <ul>
+            <li>要件定義・企画設計</li>
+            <li>LINE公式アカウント設定代行</li>
+            <li>システム開発・実装一式（LIFF, GAS, Dify）</li>
+            <li>導入テスト・修正対応</li>
+            <li>簡易操作マニュアル作成</li>
+        </ul>
+
+        <h3>■ ランニングコスト（月額費用）</h3>
+        <p>運用開始後、以下のサービス利用料は貴社負担となります。</p>
+        <table>
+            <tr>
+                <th>サービス名</th>
+                <th>概要</th>
+                <th>費用目安</th>
+            </tr>
+            <tr>
+                <td><strong>LINE公式アカウント</strong></td>
+                <td>ユーザーとの接点</td>
+                <td>無料（月200通まで）<br>※ライトプラン: 5,000円/月〜</td>
+            </tr>
+            <tr>
+                <td><strong>OpenAI API (ChatGPT)</strong></td>
+                <td>AIの頭脳部分</td>
+                <td>従量課金（約1,000円〜3,000円/月）<br>※利用頻度による</td>
+            </tr>
+        </table>
+        <div class="note">
+            ※上記費用は各サービス提供会社へ直接のお支払いとなります。<br>
+            ※クレジットカードの登録が必要なサービス（OpenAI等）がございます。<br>
+            ※Dify（AI管理画面）および管理用Googleアカウントは、弊社にて手配・管理いたします（無料）。
+        </div>
+
+
+        <h2>8. 想定スケジュール</h2>
+        <div style="background-color: #f9f9f9; padding: 20px; border-radius: 5px; border: 1px solid #eee;">
+            <ul>
+                <li><strong>Week 1：要件定義・素材準備</strong><br>診断項目の確定、リッチメニュー画像などの準備</li>
+                <li><strong>Week 2：開発・実装</strong><br>LIFFアプリ、GASロジック、Flex Message、Difyシナリオ構築</li>
+                <li><strong>Week 3：テスト・修正</strong><br>実機での動作確認、文言の微調整</li>
+                <li><strong>Week 4：公開・運用開始</strong><br>本番環境へのデプロイ、SNS告知開始</li>
+            </ul>
+        </div>
+
+        <h2>9. 共有・ご用意いただきたい事項</h2>
+        <p>開発を円滑に進めるため、以下のご協力をお願いいたします。</p>
+        <ul>
+            <li><strong>LINE公式アカウント：</strong>Administrator（管理者）権限の付与をお願いします。</li>
+            <li><strong>LINE Developers（開発者コンソール）：</strong>Admin（管理者）権限の招待、またはチャネルへのアクセス権限をお願いします（Messaging API設定のため）。
+            </li>
+            <li><strong>OpenAI APIキー：</strong>従量課金設定済みのAPIキー（AI回答生成に必須です）。</li>
+            <li><strong>確認テストへのご参加：</strong>開発段階での動作チェックにご協力ください。</li>
+        </ul>
+
+        <h2>10. 納品物</h2>
+        <ul>
+            <li>Google Apps Script (GAS) ソースコード</li>
+            <li>診断用Webアプリ ソースコード一式 (HTML/CSS/JS)</li>
+            <li>Dify チャットフロー定義ファイル (DSL/YAML)</li>
+            <li>Dify 運用簡易マニュアル</li>
+            <li>管理用Googleスプレッドシート</li>
+        </ul>
+
+        <h2>11. 免責事項・注意事項</h2>
+        <div class="note" style="background-color: #fff3e0; border: 1px solid #ffe0b2; color: #555;">
+            <ul>
+                <li><strong>AIの回答精度について：</strong>Difyを含む生成AIは、稀に不正確な情報を生成する可能性があります（ハルシネーション）。最終的な判断は担当者様による確認を推奨します。
+                </li>
+                <li><strong>プラットフォームの仕様変更：</strong>LINEやGoogle、DifyのAPI仕様変更により、機能の修正が必要になる場合があります。</li>
+                <li><strong>診断結果について：</strong>本システムによる予算診断はあくまで目安であり、金融機関の審査結果を保証するものではありません。</li>
+            </ul>
+        </div>
+
         <div class="meta-info">
-            本提案書に関するご不明点等は、お気軽にお申し付けください。<br>
-            [あなたの連絡先情報]
+            本提案書に関するご不明点等は、お気軽にお申し付けください。
         </div>
     </div>
 
