@@ -604,12 +604,13 @@ function getUserData(userId) {
         ownCapital: data[i][2],
         currentRent: data[i][3],
         familyStructure: data[i][4],
-        targetArea: data[i][5],
-        mustConditions: data[i][6],
-        safeBudget: data[i][7],
-        maxBudget: data[i][8],
-        rank: data[i][9],
-        conversationId: data[i][10]
+        propertyType: data[i][5],
+        targetArea: data[i][6],
+        mustConditions: data[i][7],
+        safeBudget: data[i][8],
+        maxBudget: data[i][9],
+        rank: data[i][10],
+        conversationId: data[i][11]
       };
     }
   }
