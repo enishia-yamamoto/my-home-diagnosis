@@ -329,6 +329,9 @@
                 style="background: #06C755; padding: 15px; border-radius: 5px 5px 0 0; margin: -10px -10px 10px -10px;">
                 <div style="font-size: 0.8em; color: #ffffffaa;">診断完了</div>
                 <div style="font-size: 1.1em; font-weight: bold; color: #ffffff;">ゆとりある予算計画です✨</div>
+                <div
+                    style="font-size: 0.8em; color: #fff; margin-top:5px; padding-top:5px; border-top:1px dashed #ffffff88;">
+                    あなたの診断ID: <strong>A-1234</strong></div>
             </div>
             <div
                 style="border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
@@ -397,18 +400,20 @@
             <strong>【ボタンクリック後の挙動】</strong><br><br>
             <strong>1. ユーザー側：</strong><br>
             「来店・Web予約する」ボタンをタップすると、貴社の予約フォームへ移動します。<br>
-            <span style="font-size: 0.9em; color: #666;">（※LINEチャット上でのやり取りは発生しません）</span><br><br>
+            <span
+                style="font-size: 0.9em; color: #666;">（※その際、診断結果に表示された<strong>「診断ID」</strong>を予約フォームの備考欄等に入力していただきます）</span><br><br>
 
             <strong>2. 貴社（管理者）側：</strong><br>
-            来店予約が入った際、お名前をキーにして管理画面（スプレッドシート）を検索することで、<br>
-            そのお客様の診断結果（年収・予算・希望エリア）を事前に把握できます。<br>
+            予約フォームに入力された「診断ID」をキーにして管理画面（スプレッドシート）を検索することで、<br>
+            そのお客様の診断結果（年収・予算・希望エリア）を確実に特定できます。<br>
             <div class="note" style="margin-top: 10px; background-color: #fff; border: 1px dashed #ccc;">
-                <strong>💡 ユーザー紐付けのポイント</strong><br>
-                予約フォームのお名前と、診断時のLINEニックネーム（またはヒアリング項目のお名前）を照合することで、顧客情報を統合します。<br>
-                <span
-                    style="font-size: 0.8em; color: #999;">※高度な連携として、予約URLにIDを埋め込んで自動連携させることも技術的には可能ですが、予約システム側の仕様に依存するため、まずは「お名前による照合」で運用を開始することをお勧めします。</span>
+                <strong>💡 匿名性の確保と紐付け</strong><br>
+                診断時点では個人情報（名前・電話番号）の入力は一切不要です。<br>
+                診断完了時に発行されるユニークな<strong>「診断ID（例：A-001）」</strong>を、来店予約時に入力していただくことで、<br>
+                「診断の手軽さ」と「商談時の情報連携」を両立させます。
             </div>
         </div>
+
 
         <h2>5. アジャイル開発とスケジュール（柔軟な改善）</h2>
         <p>
