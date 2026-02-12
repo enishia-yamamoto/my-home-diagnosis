@@ -283,13 +283,19 @@
         <h3>② 診断ロジック（GAS自動計算）</h3>
         <ul>
             <li><strong>役割：</strong> フォームから送信されたデータを解析し、「借入可能額」と「適正予算」を計算します。</li>
-            <li><strong>通知：</strong> 計算結果をLINEのトーク画面へ即座にプッシュ通知します（貴社指定の計算ロジックがある場合、それに合わせて調整可能です）。</li>
+            <li><strong>通知：</strong> 計算結果をLINEのトーク画面へ即座にプッシュ通知します。<br>
+                <span
+                    style="font-size: 0.9em; color: #666;">（※貴社独自の計算ロジックがある場合はそのまま採用いたします。特にない場合は、一般的な審査金利・返済比率に基づいた標準ロジックを弊社にて作成・適用いたします。）</span>
+            </li>
         </ul>
 
         <h3>③ 対話型AIエンジン（Dify導入）</h3>
         <ul>
             <li><strong>役割：</strong> 診断結果を踏まえた、自然な会話・相談対応。</li>
-            <li><strong>特徴：</strong> 診断で得た「予算」や「条件」をAIに記憶させます。ユーザーが「この予算で買える？」と聞くと、AIは診断結果を考慮した回答を行います。</li>
+            <li><strong>特徴：</strong> 診断で得た「予算」や「条件」をAIに記憶させます。ユーザーが「この予算で買える？」と聞くと、AIは診断結果を考慮した回答を行います。<br>
+                <span
+                    style="font-size: 0.9em; color: #d32f2f;"><strong>※有人対応モード搭載：</strong>担当者が個別チャットを行っている間は、AIの自動応答を一時停止し、会話の邪魔をしない仕組みを導入します。</span>
+            </li>
         </ul>
 
         <h2>4. ユーザー体験フロー（UX）</h2>
@@ -376,8 +382,11 @@
             <div class="btn-mock">
                 ▼ プロに相談する
             </div>
+            <div class="btn-mock" style="background: #fff; color: #555; border: 1px solid #ddd; margin-top: 5px;">
+                ↻ 条件を変えて再診断
+            </div>
             <div class="btn-mock" style="background: #f0f0f0; color: #555; margin-top: 5px;">
-                ▼ この条件でAIに相談
+                🤖 この条件でAIに相談
             </div>
         </div>
 
