@@ -384,8 +384,10 @@ function getLabel(qId, value) {
     const q = QUESTIONS[qId];
     if (q.type === 'area-select') return `${value.pref} ${value.city}`;
     if (Array.isArray(value)) { // checkbox
-        // Simplified label generation
-        return value.join(', ');
+        return value.map(v => {
+            const opt = q.options.find(o => o.value === v);
+            return opt ? opt.label : v;
+        }).join(', ');
     }
     const opt = q.options.find(o => o.value === value);
     return opt ? opt.label : value;
