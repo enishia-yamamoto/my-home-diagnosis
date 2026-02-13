@@ -3,116 +3,22 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>マイホーム適正予算診断</title>
     <link rel="stylesheet" href="style.css">
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 
 <body>
-    <div class="container" id="app">
-        <header>
-            <h1>🏠 マイホーム診断</h1>
-            <p>あなたの適正予算を3分で診断します</p>
-        </header>
-
-        <form id="diagnosisForm">
-            <!-- 隠しフィールド: UserID -->
-            <input type="hidden" id="userId" name="userId">
-
-            <div class="form-group">
-                <label>年収（額面）</label>
-                <div class="input-wrapper">
-                    <input type="number" id="annualIncome" required placeholder="例: 500">
-                    <span class="unit">万円</span>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>自己資金（頭金）</label>
-                <div class="input-wrapper">
-                    <input type="number" id="ownCapital" required placeholder="例: 200" value="0">
-                    <span class="unit">万円</span>
-                </div>
-                <p class="hint">※ない場合は0と入力してください</p>
-            </div>
-
-            <div class="form-group">
-                <label>現在の家賃（共益費込）</label>
-                <div class="input-wrapper">
-                    <input type="number" id="currentRent" required placeholder="例: 80000">
-                    <span class="unit">円</span>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>家族構成</label>
-                <select id="familyStructure" required>
-                    <option value="">選択してください</option>
-                    <option value="単身">単身</option>
-                    <option value="夫婦のみ">夫婦のみ</option>
-                    <option value="夫婦+子1人">夫婦+子1人</option>
-                    <option value="夫婦+子2人">夫婦+子2人</option>
-                    <option value="夫婦+子3人以上">夫婦+子3人以上</option>
-                    <option value="その他">その他</option>
-                </select>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>物件種別</label>
-                <select id="propertyType" required>
-                    <option value="">選択してください</option>
-                    <!-- form_config.jsonから動的生成 -->
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>希望エリア</label>
-                <select id="targetArea" required>
-                    <option value="">選択してください</option>
-                    <!-- form_config.jsonから動的生成 -->
-                </select>
-                <input type="text" id="targetAreaOther" placeholder="エリア詳細を入力してください"
-                    style="display:none; margin-top:5px;">
-            </div>
-
-            <div class="form-group">
-                <label>譲れない条件（複数可）</label>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" name="conditions" value="駐車場2台以上"> 駐車場2台以上</label>
-                    <label><input type="checkbox" name="conditions" value="駅徒歩15分以内"> 駅徒歩15分以内</label>
-                    <label><input type="checkbox" name="conditions" value="南向き・日当たり良好"> 南向き・日当たり良好</label>
-                    <label><input type="checkbox" name="conditions" value="庭付き"> 庭付き</label>
-                    <label><input type="checkbox" name="conditions" value="学区重視"> 学区重視</label>
-                </div>
-            </div>
-
-            <div class="error-message" id="errorMessage"></div>
-
-            <button type="submit" id="submitBtn" class="btn-primary" disabled>
-                診断する
-            </button>
-        </form>
-
-        <!-- ロード中オーバーレイ -->
-        <div id="loading" class="overlay">
+    <div id="app-content" class="container">
+        <!-- JS will render content here -->
+        <div class="loading-init">
             <div class="spinner"></div>
-            <p>LINEと連携中...</p>
-        </div>
-
-        <!-- 送信完了画面 -->
-        <div id="complete" class="overlay hidden">
-            <div class="complete-content">
-                <div class="icon">✅</div>
-                <h2>診断完了！</h2>
-                <p>LINEのトーク画面に<br>診断結果を送りました。</p>
-                <button onclick="liff.closeWindow()" class="btn-secondary">閉じる</button>
-            </div>
+            <p>読み込み中...</p>
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="script.js"></script>
 </body>
 
 </html>
