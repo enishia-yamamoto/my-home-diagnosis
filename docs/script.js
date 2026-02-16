@@ -290,15 +290,24 @@ function showQuestion(qId) {
     }
 
     // Navigation
+    const showBack = currentStep > 0;
     html += `
             </div>
             <div class="action-area">
+                ${showBack ? '<button class="btn-secondary" onclick="goBack()">← 戻る</button>' : ''}
                 <button class="btn-primary" onclick="submitAnswer('${qId}')">次へ</button>
             </div>
         </div>
     `;
 
     app.innerHTML = html;
+}
+
+function goBack() {
+    if (currentStep > 0) {
+        currentStep--;
+        showQuestion(questionQueue[currentStep]);
+    }
 }
 
 function handleRadioChange(qId, value, showInput) {

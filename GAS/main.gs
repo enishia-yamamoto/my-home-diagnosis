@@ -16,10 +16,7 @@
 // キー名: LINE_CHANNEL_ACCESS_TOKEN, DIFY_API_KEY, LIFF_ID, RATE_FLOATING, RATE_FIXED等
 // ※ スクリプトプロパティ未設定時は以下のデフォルト値が適用されます
 const DEFAULT_RATE_FLOATING = 0.5; // 変動金利 (%)
-const DEFAULT_RATE_FIXED = 1.8;    // 固定金利 (%)
 const DEFAULT_TERM_YEARS = 35;     // 返済期間 (年)
-const DEFAULT_RATIO_SAFE = 0.20;   // 安全返済比率 (20%)
-const DEFAULT_RATIO_MAX = 0.35;    // 上限返済比率 (35%)
 
 // ==========================================
 // 2. APIハンドラ (Main)
@@ -112,10 +109,6 @@ function doPost(e) {
     return createJsonResponse({ status: 'error', message: error.toString() });
   }
 }
-
-/**
- * 診断API処理
- */
 
 /**
  * 診断API処理
@@ -249,7 +242,6 @@ function handleDiagnosisApi(data) {
     // userName取得（フロントから来なかった場合、LINE Profile APIで取得）
     if (!parsedData.userName && data.userId) {
       try {
-        const config = getConfig();
         const profileRes = UrlFetchApp.fetch(`https://api.line.me/v2/bot/profile/${data.userId}`, {
           headers: { 'Authorization': `Bearer ${config.lineChannelAccessToken}` },
           muteHttpExceptions: true
@@ -376,24 +368,10 @@ class Config {
   // API Keys (必須)
   get lineChannelAccessToken() { return this.get('LINE_CHANNEL_ACCESS_TOKEN'); }
   get difyApiKey() { return this.get('DIFY_API_KEY'); }
-  get liffId() { return this.get('LIFF_ID'); }
 
-  // 計算用定数 (未設定時はデフォルト値、パーセント値の場合は小数に変換)
+  // 計算用定数 (未設定時はデフォルト値)
   get rateFloating() { return Number(this.get('RATE_FLOATING')) || DEFAULT_RATE_FLOATING; }
-  get rateFixed() { return Number(this.get('RATE_FIXED')) || DEFAULT_RATE_FIXED; }
   get termYears() { return Number(this.get('TERM_YEARS')) || DEFAULT_TERM_YEARS; }
-  
-  // 返済比率: 1より大きい値(例: 20)が入っていたら 0.2 に変換する安全策
-  get ratioSafe() { 
-    let val = Number(this.get('RATIO_SAFE')) || DEFAULT_RATIO_SAFE;
-    if (val > 1) val = val / 100;
-    return val;
-  }
-  get ratioMax() { 
-    let val = Number(this.get('RATIO_MAX')) || DEFAULT_RATIO_MAX; 
-    if (val > 1) val = val / 100;
-    return val;
-  }
 }
 
 function getConfig() { return new Config(); }
@@ -403,12 +381,6 @@ function getConfig() { return new Config(); }
 // ==========================================
 class Calculator {
   constructor(config) { this.config = config; }
-
-  pmt(rate, periods, present) {
-    if (rate === 0) return present / periods;
-    const monthlyRate = rate / 12;
-    return (present * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -periods));
-  }
 
   pv(rate, periods, payment) {
     if (rate === 0) return payment * periods;
@@ -463,18 +435,12 @@ class Calculator {
     return {
       userId: input.userId,
       userName: input.userName,
-      annualIncome: income,
-      ownCapital: capital,
       currentRent: input.currentRent,
-      familyStructure: input.familyStructure,
       propertyType: input.propertyType,
       targetArea: input.targetArea,
-      targetAreaOther: input.targetAreaOther,
       mustConditions: input.mustConditions,
       maxBudget: maxBudget,
       safeBudget: safeBudget,
-      monthlyPaymentMax: Math.floor(maxMonthlyPayment),
-      monthlyPaymentSafe: Math.floor(safeMonthlyPayment),
       rank: rank
     };
   }
@@ -765,10 +731,7 @@ class Dify {
 }
 
 // ==========================================
-// 6. ユーティリティ (Log, GetDiagnosis)
-// ==========================================
-// ==========================================
-// 6. ユーザーデータ管理 (Users Sheet)
+// 6. ユーザーデータ管理 (Users / DiagnosisLog Sheet)
 // ==========================================
 const USERS_SHEET_NAME = 'Users';
 
