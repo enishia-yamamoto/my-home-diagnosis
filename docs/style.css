@@ -198,6 +198,15 @@ select {
     font-size: 0.9rem;
 }
 
+.form-group input[type="text"] {
+    width: 100%;
+    padding: 12px;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+}
+
 /* Buttons */
 .action-area {
     margin-top: 24px;
