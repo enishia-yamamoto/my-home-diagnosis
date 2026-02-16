@@ -1,5 +1,5 @@
 // 設定
-const LIFF_ID = '2009093040-cG0ohzTI';
+const LIFF_ID = '2009124041-eKYG4I5Q';
 const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzp_Mdg5MQ4e6JUVW4nIN3eCazr0d5m7Yba3p3OntKeryzCkuXT5MymBaClvOhYygFPaQ/exec';
 
 // DOM要素

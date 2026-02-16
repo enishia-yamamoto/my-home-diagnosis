@@ -184,7 +184,7 @@ function parseDiagnosisData(raw) {
   return {
     userId: raw.userId,
     userName: raw.userName || '',
-    heatLevel: raw.heatLevel,
+    heatLevel: ({ high: '高', mid: '中', low: '低' })[raw.heatLevel] || raw.heatLevel,
     // 計算用数値
     annualIncome: income,
     monthlyDebt: debt,
@@ -417,36 +417,47 @@ class Calculator {
   }
 
   calculateAll(input) {
-    const income = Number(input.annualIncome);
-    const capital = Number(input.ownCapital);
+    const income = Number(input.annualIncome); // 万円
+    const capital = Number(input.ownCapital);   // 万円
     const years = this.config.termYears;
     const months = years * 12;
+    const rate = this.config.rateFloating / 100; // 年利（小数）
 
-    // 借入上限
-    const maxMonthlyPayment = (income * 10000 * this.config.ratioMax) / 12;
-    const maxLoan = this.pv(this.config.rateFloating / 100, months, maxMonthlyPayment);
+    // --- 返済比率の決定 ---
+    // 雇用形態を rawAnswers から取得
+    const empType = (input.rawAnswers && input.rawAnswers.q3) ? input.rawAnswers.q3.value : '';
+    
+    let ratioMax;
+    if (empType === 'PUBLIC') {
+      ratioMax = 0.40; // 公務員: 40%
+    } else if (income < 400) {
+      ratioMax = 0.30; // 年収400万未満: 30%
+    } else {
+      ratioMax = 0.35; // 年収400万以上: 35%
+    }
+    const ratioSafe = 0.20; // 安全ゾーン: 常に20%
+
+    // --- 借入上限（銀行融資目線） ---
+    const maxMonthlyPayment = (income * 10000 * ratioMax) / 12;
+    const maxLoan = this.pv(rate, months, maxMonthlyPayment);
     const maxBudget = Math.floor((maxLoan + capital * 10000) / 10000);
 
-    // 適正予算
-    const safeMonthlyPayment = (income * 10000 * this.config.ratioSafe) / 12;
-    const safeLoan = this.pv(this.config.rateFloating / 100, months, safeMonthlyPayment);
+    // --- 安全予算（生活を崩さないゾーン） ---
+    const safeMonthlyPayment = (income * 10000 * ratioSafe) / 12;
+    const safeLoan = this.pv(rate, months, safeMonthlyPayment);
     const safeBudget = Math.floor((safeLoan + capital * 10000) / 10000);
 
     // ランク判定 (希望予算 vs 計算結果)
-    let rank = 'B'; // Default (Caution/Standard)
+    let rank = 'B';
     const desired = input.desiredBudget;
-    
     if (desired > 0) {
-        if (desired <= safeBudget) {
-            rank = 'A'; // Safe
-        } else if (desired > maxBudget) {
-            rank = 'C'; // Danger
-        } else {
-            rank = 'B'; // Caution
-        }
-    } else {
-        // 希望予算不明の場合はBとする（または、安全予算内ならAとも言えるが、不明確なのでCaution/Standard扱い）
-        rank = 'B';
+      if (desired <= safeBudget) {
+        rank = 'A'; // Safe
+      } else if (desired > maxBudget) {
+        rank = 'C'; // Danger
+      } else {
+        rank = 'B'; // Caution
+      }
     }
 
     return {
@@ -464,10 +475,7 @@ class Calculator {
       safeBudget: safeBudget,
       monthlyPaymentMax: Math.floor(maxMonthlyPayment),
       monthlyPaymentSafe: Math.floor(safeMonthlyPayment),
-      monthlyPaymentMax: Math.floor(maxMonthlyPayment),
-      monthlyPaymentSafe: Math.floor(safeMonthlyPayment),
-      rank: rank,
-      propertyType: input.propertyType // 追加
+      rank: rank
     };
   }
 }
@@ -744,11 +752,14 @@ class Dify {
 
   chatWithDiagnosis(userId, query, diagnosis, conversationId) {
     return this.chat(userId, query, {
-      incom: diagnosis.annualIncome,
-      budget: diagnosis.safeBudget,
-      area: diagnosis.targetArea,
-      conditions: diagnosis.mustConditions,
-      family: diagnosis.familyStructure
+      heat_level: diagnosis.heatLevel || '',
+      income: diagnosis.q2Label || '',
+      family: diagnosis.q7Label || '',
+      area: diagnosis.q9Label || '',
+      property_type: diagnosis.q10Label || '',
+      conditions: diagnosis.q11Label || '',
+      concerns: diagnosis.q12Label || '',
+      desired_budget: diagnosis.q13Label || ''
     }, conversationId);
   }
 }
@@ -763,7 +774,7 @@ const USERS_SHEET_NAME = 'Users';
 
 // 共通ヘッダー定義（UsersシートとDiagnosisLogシートで共通）
 const SHEET_HEADERS = [
-  '診断ID', 'LINE', '温度感',
+  '診断ID', 'LINE ID', 'ニックネーム', '温度感',
   '購入時期', '世帯年収', '雇用形態', '勤続年数',
   '既存借入', '現在の住まい', '家族構成', '将来の予定',
   '希望エリア', '物件タイプ', '譲れない条件', '不安なこと', '希望価格帯',
@@ -775,10 +786,10 @@ const SHEET_HEADERS = [
  * データ行を生成（UsersとLogで共通）
  */
 function buildRowData(userId, data) {
-  const lineCell = data.userName ? `${userId} / ${data.userName}` : userId;
   return [
     data.diagnosisId || '',
-    lineCell,
+    userId,
+    data.userName || '',
     data.heatLevel || '',
     data.q1Label || '',
     data.q2Label || '',
@@ -818,8 +829,9 @@ function getUserData(userId) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0] || [];
   for (let i = 1; i < data.length; i++) {
-    const lineCell = String(data[i][headers.indexOf('LINE')] || data[i][1]);
-    if (lineCell.includes(userId)) {
+    const lineIdCol = headers.indexOf('LINE ID');
+    const lineId = String(data[i][lineIdCol >= 0 ? lineIdCol : 1]);
+    if (lineId === userId) {
       const row = {};
       headers.forEach((h, idx) => { row[h] = data[i][idx]; });
       return {
@@ -848,7 +860,7 @@ function saveUserData(userId, data) {
   const rows = sheet.getDataRange().getValues();
   let rowIndex = -1;
   for (let i = 1; i < rows.length; i++) {
-    if (String(rows[i][1]).includes(userId)) {
+    if (String(rows[i][1]) === userId) {
       rowIndex = i + 1;
       break;
     }
