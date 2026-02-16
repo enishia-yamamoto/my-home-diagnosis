@@ -25,23 +25,6 @@ const DEFAULT_TERM_YEARS = 35;     // 返済期間 (年)
 /**
  * 共通処理: OPTIONSリクエストへの対応 (CORSプリフライト用)
  */
-// ==========================================
-// デバッグログ用関数
-// ==========================================
-function logToSheet(msg) {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName('Debug');
-    if (!sheet) {
-      sheet = ss.insertSheet('Debug');
-      sheet.appendRow(['Timestamp', 'Message']);
-    }
-    sheet.appendRow([new Date(), msg]);
-  } catch (e) {
-    console.error('Sheet Log Error:', e);
-  }
-}
-
 /**
  * 共通処理: OPTIONSリクエストへの対応 (CORSプリフライト用)
  */
@@ -55,17 +38,13 @@ function doOptions(e) {
 function doPost(e) {
   try {
     console.log('doPost START');
-    logToSheet('doPost START');
     
     // リクエスト内容の確認
     if (e && e.postData) {
       console.log('ContentType:', e.postData.type);
-      logToSheet('ContentType: ' + e.postData.type);
       console.log('Contents:', e.postData.contents);
-      logToSheet('Contents: ' + e.postData.contents);
     } else {
       console.error('No postData received');
-      logToSheet('Error: No postData received');
       return createJsonResponse({ status: 'error', message: 'No postData' });
     }
 
@@ -74,38 +53,32 @@ function doPost(e) {
       json = JSON.parse(e.postData.contents);
     } catch (error) {
       console.error('JSON Parse Error:', error);
-      logToSheet('Error: JSON Parse Error: ' + error.message);
       return createJsonResponse({ status: 'error', message: 'Invalid JSON' });
     }
 
     // 診断データ送信の場合
     if (json.type === 'diagnosis') {
       console.log('Processing Diagnosis API');
-      logToSheet('Processing Diagnosis API');
       return handleDiagnosisApi(json.data);
     }
   
     // LINE Webhookの場合
     if (json.events) {
       console.log('Processing LINE Webhook');
-      logToSheet('Processing LINE Webhook');
       return handleLineWebhook(json);
     }
 
     // どのタイプにもマッチしない場合
     if (json.userId) {
        console.log('Assuming flat diagnosis data based on userId');
-       logToSheet('Assuming flat diagnosis data based on userId');
        return handleDiagnosisApi(json);
     }
 
     console.warn('Unknown request type:', JSON.stringify(json));
-    logToSheet('Error: Unknown request type: ' + JSON.stringify(json));
     return createJsonResponse({ status: 'error', message: 'Unknown request type' });
 
   } catch (error) {
     console.error('Global Error in doPost:', error);
-    logToSheet('Global Error in doPost: ' + error.toString());
     return createJsonResponse({ status: 'error', message: error.toString() });
   }
 }
@@ -207,20 +180,19 @@ function parseDiagnosisData(raw) {
 }
 
 /**
- * 診断ID生成（YYYYMMDD-XXX 形式、ランダム英数3桁）
+ * 診断ID生成（mon-MMDD-XXX 形式、月英略称+日付+ランダム英数3桁）
  */
 function generateDiagnosisId() {
   const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const monthNames = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  const mon = monthNames[now.getMonth()];
   const d = String(now.getDate()).padStart(2, '0');
-  const dateStr = `${y}${m}${d}`;
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let rand = '';
   for (let i = 0; i < 3; i++) {
     rand += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  return `${dateStr}-${rand}`;
+  return `${now.getFullYear()}-${mon.charAt(0).toUpperCase() + mon.slice(1)}${d}-${rand}`;
 }
 
 function handleDiagnosisApi(data) {
@@ -264,7 +236,7 @@ function handleDiagnosisApi(data) {
       diagnosisId: diagnosisId,
       userName: parsedData.userName,
       heatLevel: parsedData.heatLevel,
-      conversationId: getConversationId(data.userId),
+      conversationId: '',  // 再診断時はDify会話をリセット（新しいinputsを反映させるため）
       q1Label: parsedData.q1Label,
       q2Label: parsedData.q2Label,
       q3Label: parsedData.q3Label,
@@ -468,18 +440,13 @@ class LINE {
       const responseBody = response.getContentText();
       if (responseCode !== 200) {
         console.error('LINE Push Failed:', responseCode, responseBody);
-        logToSheet('LINE Push Failed: ' + responseCode + ' ' + responseBody);
         console.error('Payload:', JSON.stringify({ to: userId, messages: messages }));
-        logToSheet('Payload: ' + JSON.stringify({ to: userId, messages: messages }));
       } else {
         console.log('LINE Push Success');
-        logToSheet('LINE Push Success');
       }
     } catch (e) {
       console.error('LINE Push Error:', e);
-      logToSheet('LINE Push Error: ' + e.toString());
       console.error('Payload:', JSON.stringify({ to: userId, messages: messages }));
-      logToSheet('Payload: ' + JSON.stringify({ to: userId, messages: messages }));
     }
   }
 
@@ -659,7 +626,7 @@ class MessageBuilder {
                action: {
                  type: 'message',
                  label: '🤖 この条件でAIに相談',
-                 text: `【AI相談】\n診断ID:${diagnosisId}\n判定:${zoneTitle}\n目安予算:${rangeText}\nこの結果について詳しく教えてください。`
+                 text: '診断結果について相談したいです。'
                }
              }
           ]
@@ -675,7 +642,7 @@ class MessageBuilder {
 class Dify {
   constructor(config) {
     this.apiKey = config.difyApiKey;
-    this.apiUrl = 'https://ai-works.xvps.jp/v1';
+    this.apiUrl = 'https://api.dify.ai/v1';
   }
 
   chat(userId, query, inputs = {}, conversationId = null) {
@@ -709,23 +676,39 @@ class Dify {
       return json.answer || '申し訳ありません。回答を生成できませんでした。';
     } catch (e) {
       console.error('Dify Error:', e.toString());
-      logToSheet('Dify Error: ' + e.toString());
-      // APIキー漏洩防止のため、ログには詳細を出さないが、デバッグ時は必要
-      // logToSheet('API Key: ' + this.apiKey); 
-      return '現在、システムが応答できません。（管理者へ：ConfigシートのDIFY_API_KEY設定や、GASのDebugシートのログを確認してください）';
+      return '現在、システムが応答できません。（管理者へ：GASの実行ログを確認してください）';
     }
   }
 
   chatWithDiagnosis(userId, query, diagnosis, conversationId) {
+    // 判定ランク算出（safe_budget / desired_budgetから）
+    let rank = 'B';
+    const safe = Number(diagnosis.safeBudget) || 0;
+    const max = Number(diagnosis.maxBudget) || 0;
+    const desired = Number(diagnosis.desiredBudget) || 0;
+    if (desired > 0 && safe > 0) {
+      if (desired <= safe) rank = 'A';
+      else if (desired > max) rank = 'C';
+    }
+
     return this.chat(userId, query, {
-      heat_level: diagnosis.heatLevel || '',
-      income: diagnosis.q2Label || '',
-      family: diagnosis.q7Label || '',
-      area: diagnosis.q9Label || '',
-      property_type: diagnosis.q10Label || '',
-      conditions: diagnosis.q11Label || '',
-      concerns: diagnosis.q12Label || '',
-      desired_budget: diagnosis.q13Label || ''
+      heat_level: String(diagnosis.heatLevel || ''),
+      purchase_timing: String(diagnosis.q1Label || ''),
+      income: String(diagnosis.income || ''),
+      employment_type: String(diagnosis.q3Label || ''),
+      years_employed: String(diagnosis.q4Label || ''),
+      existing_loans: String(diagnosis.q5Label || ''),
+      current_housing: String(diagnosis.q6Label || ''),
+      family: String(diagnosis.family || ''),
+      future_plans: String(diagnosis.q8Label || ''),
+      area: String(diagnosis.area || ''),
+      property_type: String(diagnosis.propertyType || ''),
+      conditions: String(diagnosis.conditions || ''),
+      concerns: String(diagnosis.concerns || ''),
+      desired_budget: String(diagnosis.desiredBudget || ''),
+      safe_budget: String(diagnosis.safeBudget || ''),
+      max_budget: String(diagnosis.maxBudget || ''),
+      rank: rank
     }, conversationId);
   }
 }
@@ -799,14 +782,33 @@ function getUserData(userId) {
       headers.forEach((h, idx) => { row[h] = data[i][idx]; });
       return {
         userId: userId,
-        annualIncome: row['世帯年収'] || '',
-        targetArea: row['希望エリア'] || '',
+        heatLevel: row['温度感'] || '',
+        income: row['世帯年収'] || '',
+        family: row['家族構成'] || '',
+        area: row['希望エリア'] || '',
         propertyType: row['物件タイプ'] || '',
-        mustConditions: row['譲れない条件'] || '',
-        familyStructure: row['家族構成'] || '',
+        conditions: row['譲れない条件'] || '',
+        concerns: row['不安なこと'] || '',
+        desiredBudget: row['希望価格帯'] || '',
         safeBudget: row['安全予算（万円）'] || '',
         maxBudget: row['上限予算（万円）'] || '',
-        conversationId: row['会話ID'] || ''
+        conversationId: row['会話ID'] || '',
+        // buildRowData互換フィールド（saveUserConversationId経由での上書き防止用）
+        diagnosisId: row['診断ID'] || '',
+        userName: row['ニックネーム'] || '',
+        q1Label: row['購入時期'] || '',
+        q2Label: row['世帯年収'] || '',
+        q3Label: row['雇用形態'] || '',
+        q4Label: row['勤続年数'] || '',
+        q5Label: row['既存借入'] || '',
+        q6Label: row['現在の住まい'] || '',
+        q7Label: row['家族構成'] || '',
+        q8Label: row['将来の予定'] || '',
+        q9Label: row['希望エリア'] || '',
+        q10Label: row['物件タイプ'] || '',
+        q11Label: row['譲れない条件'] || '',
+        q12Label: row['不安なこと'] || '',
+        q13Label: row['希望価格帯'] || ''
       };
     }
   }
@@ -851,9 +853,21 @@ function saveLogData(userId, data) {
 }
 
 function saveUserConversationId(userId, conversationId) {
-  const userData = getUserData(userId) || {};
-  userData.conversationId = conversationId;
-  saveUserData(userId, userData);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(USERS_SHEET_NAME);
+  if (!sheet) return;
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0] || [];
+  const convCol = headers.indexOf('会話ID');
+  if (convCol < 0) return;
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][1]) === userId) {
+      sheet.getRange(i + 1, convCol + 1).setValue(conversationId);
+      return;
+    }
+  }
 }
 
 function getConversationId(userId) {

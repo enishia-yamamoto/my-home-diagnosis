@@ -63,8 +63,7 @@ const QUESTIONS = {
         type: 'radio-conditional-input',
         options: [
             { label: '借入なし', value: 'NONE' },
-            { label: '借入あり（車）', value: 'EXISTS_CAR', showInput: true },
-            { label: '借入あり（カード・その他）', value: 'EXISTS_OTHER', showInput: true }
+            { label: '借入あり（車・カード等の合計）', value: 'EXISTS', showInput: true }
         ],
         inputLabel: '月々の返済合計',
         inputType: 'number',
