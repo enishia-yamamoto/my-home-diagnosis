@@ -200,8 +200,10 @@ select {
 
 /* Buttons */
 .action-area {
-    margin-top: 30px;
-    text-align: center;
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .btn-primary {
@@ -209,14 +211,15 @@ select {
     color: white;
     border: none;
     border-radius: 8px;
-    padding: 14px 40px;
+    padding: 16px;
     font-size: 1.1rem;
     font-weight: bold;
     cursor: pointer;
     width: 100%;
-    max-width: 300px;
+    min-height: 52px;
     box-shadow: 0 4px 6px rgba(6, 199, 85, 0.2);
     transition: transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .btn-primary:active {
@@ -224,14 +227,18 @@ select {
 }
 
 .btn-secondary {
-    background-color: #666;
-    color: white;
-    border: none;
+    background-color: transparent;
+    color: #666;
+    border: 1.5px solid #ccc;
     border-radius: 8px;
-    padding: 12px 30px;
+    padding: 14px;
     font-size: 1rem;
-    margin-top: 15px;
+    font-weight: 500;
     cursor: pointer;
+    width: 100%;
+    min-height: 48px;
+    -webkit-tap-highlight-color: transparent;
+    order: 1;
 }
 
 /* Result / Loading */
