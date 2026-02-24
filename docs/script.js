@@ -161,14 +161,41 @@ const QUESTIONS = {
             { label: '4,000万以上', value: 'GT_4000' },
             { label: 'わからない', value: 'UNKNOWN' }
         ]
+    },
+    q14: {
+        id: 'q14',
+        text: '現在の年齢',
+        type: 'radio-with-input',
+        options: [
+            { label: '20代', value: 'AGE_20S' },
+            { label: '30代', value: 'AGE_30S' },
+            { label: '40代', value: 'AGE_40S' },
+            { label: '50代以上', value: 'AGE_50S' },
+            { label: '正確に入力', value: 'MANUAL', input: true }
+        ],
+        inputType: 'number',
+        inputPlaceholder: '例: 35'
+    },
+    q15: {
+        id: 'q15',
+        text: '頭金（自己資金）はありますか？',
+        type: 'radio-conditional-input',
+        options: [
+            { label: 'なし（0円）', value: 'NONE' },
+            { label: 'あり', value: 'EXISTS', showInput: true }
+        ],
+        inputLabel: '頭金の金額',
+        inputType: 'number',
+        inputPlaceholder: '例: 300',
+        inputUnit: '万円'
     }
 };
 
 // Flow Definitions based on Heat
 const FLOWS = {
-    high: ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9', 'q10', 'q11', 'q12', 'q13'],
-    mid: ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9', 'q10', 'q12', 'q13'],
-    low: ['q1', 'q2', 'q3', 'q4', 'q5', 'q9']
+    high: ['q1', 'q14', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9', 'q10', 'q11', 'q15', 'q12', 'q13'],
+    mid: ['q1', 'q14', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9', 'q10', 'q15', 'q12', 'q13'],
+    low: ['q1', 'q14', 'q2', 'q3', 'q4', 'q5', 'q15', 'q9']
 };
 
 /* Prefecture Data */

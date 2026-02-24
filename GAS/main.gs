@@ -15,7 +15,7 @@
 // APIキーや設定値は「プロジェクトの設定 > スクリプトプロパティ」に保存してください。
 // キー名: LINE_CHANNEL_ACCESS_TOKEN, DIFY_API_KEY, LIFF_ID, RATE_FLOATING, RATE_FIXED等
 // ※ スクリプトプロパティ未設定時は以下のデフォルト値が適用されます
-const DEFAULT_RATE_FLOATING = 0.5; // 変動金利 (%)
+const DEFAULT_RATE_FLOATING = 1.0; // 変動金利 (%)
 const DEFAULT_TERM_YEARS = 35;     // 返済期間 (年)
 
 // ==========================================
@@ -89,16 +89,23 @@ function doPost(e) {
 function parseDiagnosisData(raw) {
   const ans = raw.answers || {};
   
-  // 年収の数値化（万円）
-  let income = 0;
+  // 年収の数値化（万円）- 範囲で取得
+  let incomeMin = 0;
+  let incomeMax = 0;
   if (ans.q2) {
     if (ans.q2.value === 'MANUAL') {
-      income = Number(ans.q2.extra);
+      const v = Number(ans.q2.extra);
+      incomeMin = v;
+      incomeMax = v;
     } else {
       const incomeMap = {
-        'LT_400': 350, '400_600': 500, '600_800': 700, '800_1000': 900, 'GT_1000': 1200
+        'LT_400': {min:200, max:399}, '400_600': {min:400, max:599},
+        '600_800': {min:600, max:799}, '800_1000': {min:800, max:999},
+        'GT_1000': {min:1000, max:1500}
       };
-      income = incomeMap[ans.q2.value] || 0;
+      const range = incomeMap[ans.q2.value];
+      incomeMin = range ? range.min : 0;
+      incomeMax = range ? range.max : 0;
     }
   }
 
@@ -123,6 +130,23 @@ function parseDiagnosisData(raw) {
   if (ans.q13) {
     const budgetMap = { 'LT_2000': 2000, '2000_3000': 2500, '3000_4000': 3500, 'GT_4000': 4500, 'UNKNOWN': 0 };
     desired = budgetMap[ans.q13.value] || 0;
+  }
+
+  // 年齢 (Q14)
+  let age = 35; // デフォルト
+  if (ans.q14) {
+    if (ans.q14.value === 'MANUAL' && ans.q14.extra) {
+      age = Number(ans.q14.extra);
+    } else {
+      const ageMap = { 'AGE_20S': 25, 'AGE_30S': 35, 'AGE_40S': 45, 'AGE_50S': 55 };
+      age = ageMap[ans.q14.value] || 35;
+    }
+  }
+
+  // 頭金 (Q15) - 万円単位
+  let capital = 0;
+  if (ans.q15 && ans.q15.value === 'EXISTS' && ans.q15.extra) {
+    capital = Number(ans.q15.extra);
   }
 
   // --- 各質問のラベル（そのまま保存用） ---
@@ -151,11 +175,13 @@ function parseDiagnosisData(raw) {
     userId: raw.userId,
     userName: raw.userName || '',
     heatLevel: ({ high: '高', mid: '中', low: '低' })[raw.heatLevel] || raw.heatLevel,
-    // 計算用数値
-    annualIncome: income,
+    // 計算用数値（範囲）
+    annualIncomeMin: incomeMin,
+    annualIncomeMax: incomeMax,
     monthlyDebt: debt,
     currentRent: rent,
-    ownCapital: 0,
+    ownCapital: capital,
+    age: age,
     desiredBudget: desired,
     // 各質問の生ラベル（スプシ保存用）
     q1Label: label('q1'),   // 購入時期
@@ -171,6 +197,10 @@ function parseDiagnosisData(raw) {
     q11Label: label('q11'), // 譲れない条件
     q12Label: label('q12'), // 不安なこと
     q13Label: label('q13'), // 希望価格帯
+    // Q14: 年齢（手動入力の場合はextraも付ける）
+    q14Label: (ans.q14 && ans.q14.value === 'MANUAL' && ans.q14.extra) ? `${ans.q14.extra}歳` : label('q14'),
+    // Q15: 頭金（ありの場合はextraも付ける）
+    q15Label: (ans.q15 && ans.q15.extra) ? `${label('q15')}（${Number(ans.q15.extra).toLocaleString()}万円）` : label('q15'),
     // その他
     targetArea: area,
     propertyType: ans.q10 ? ans.q10.label : '',
@@ -249,7 +279,9 @@ function handleDiagnosisApi(data) {
       q10Label: parsedData.q10Label,
       q11Label: parsedData.q11Label,
       q12Label: parsedData.q12Label,
-      q13Label: parsedData.q13Label
+      q13Label: parsedData.q13Label,
+      q14Label: parsedData.q14Label,
+      q15Label: parsedData.q15Label
     };
 
     // ユーザーデータ保存（上書き）
@@ -361,48 +393,99 @@ class Calculator {
   }
 
   calculateAll(input) {
-    const income = Number(input.annualIncome); // 万円
-    const capital = Number(input.ownCapital);   // 万円
-    const years = this.config.termYears;
-    const months = years * 12;
+    const incomeMin = Number(input.annualIncomeMin); // 万円（下限）
+    const incomeMax = Number(input.annualIncomeMax); // 万円（上限）
+    const capital = Number(input.ownCapital);   // 万円（頭金）
+    const debt = Number(input.monthlyDebt) || 0; // 円（月々の既存借入返済額）
     const rate = this.config.rateFloating / 100; // 年利（小数）
 
+    // --- ③ 年齢による返済期間調整 ---
+    const age = Number(input.age) || 35;
+    const maxCompletionAge = 80;
+    const actualYears = Math.min(this.config.termYears, maxCompletionAge - age);
+    const months = Math.max(actualYears, 1) * 12;
+
     // --- 返済比率の決定 ---
-    // 雇用形態を rawAnswers から取得
     const empType = (input.rawAnswers && input.rawAnswers.q3) ? input.rawAnswers.q3.value : '';
-    
-    let ratioMax;
-    if (empType === 'PUBLIC') {
-      ratioMax = 0.40; // 公務員: 40%
-    } else if (income < 400) {
-      ratioMax = 0.30; // 年収400万未満: 30%
-    } else {
-      ratioMax = 0.35; // 年収400万以上: 35%
-    }
+
+    const getRatioMax = (income) => {
+      if (empType === 'PUBLIC') return 0.40;
+      if (income < 400) return 0.30;
+      return 0.35;
+    };
     const ratioSafe = 0.20; // 安全ゾーン: 常に20%
 
-    // --- 借入上限（銀行融資目線） ---
-    const maxMonthlyPayment = (income * 10000 * ratioMax) / 12;
-    const maxLoan = this.pv(rate, months, maxMonthlyPayment);
-    const maxBudget = Math.floor((maxLoan + capital * 10000) / 10000);
+    // --- ① 勤続年数による補正係数 ---
+    const tenureValue = (input.rawAnswers && input.rawAnswers.q4) ? input.rawAnswers.q4.value : '';
+    const tenureFactor = (tenureValue === 'LT_1Y') ? 0.7 : 1.0;
 
-    // --- 安全予算（生活を崩さないゾーン） ---
-    const safeMonthlyPayment = (income * 10000 * ratioSafe) / 12;
-    const safeLoan = this.pv(rate, months, safeMonthlyPayment);
-    const safeBudget = Math.floor((safeLoan + capital * 10000) / 10000);
+    // --- 下限年収での計算 ---
+    const ratioMaxMin = getRatioMax(incomeMin);
+    let maxMonthlyMin = (incomeMin * 10000 * ratioMaxMin) / 12;
+    // ② 既存借入の差し引き
+    maxMonthlyMin = Math.max(maxMonthlyMin - debt, 0);
+    let maxLoanMin = this.pv(rate, months, maxMonthlyMin);
+    // ① 勤続年数補正
+    maxLoanMin = maxLoanMin * tenureFactor;
+    const maxBudgetMin = Math.floor((maxLoanMin + capital * 10000) / 10000);
 
-    // ランク判定 (希望予算 vs 計算結果)
+    let safeMonthlyMin = (incomeMin * 10000 * ratioSafe) / 12;
+    safeMonthlyMin = Math.max(safeMonthlyMin - debt, 0);
+    let safeLoanMin = this.pv(rate, months, safeMonthlyMin);
+    safeLoanMin = safeLoanMin * tenureFactor;
+    const safeBudgetMin = Math.floor((safeLoanMin + capital * 10000) / 10000);
+
+    // --- 上限年収での計算 ---
+    const ratioMaxMax = getRatioMax(incomeMax);
+    let maxMonthlyMax = (incomeMax * 10000 * ratioMaxMax) / 12;
+    maxMonthlyMax = Math.max(maxMonthlyMax - debt, 0);
+    let maxLoanMax = this.pv(rate, months, maxMonthlyMax);
+    maxLoanMax = maxLoanMax * tenureFactor;
+    const maxBudgetMax = Math.floor((maxLoanMax + capital * 10000) / 10000);
+
+    let safeMonthlyMax = (incomeMax * 10000 * ratioSafe) / 12;
+    safeMonthlyMax = Math.max(safeMonthlyMax - debt, 0);
+    let safeLoanMax = this.pv(rate, months, safeMonthlyMax);
+    safeLoanMax = safeLoanMax * tenureFactor;
+    const safeBudgetMax = Math.floor((safeLoanMax + capital * 10000) / 10000);
+
+    // ランク判定（保守的 = 下限ベース）
     let rank = 'B';
     const desired = input.desiredBudget;
-    if (desired > 0) {
-      if (desired <= safeBudget) {
-        rank = 'A'; // Safe
-      } else if (desired > maxBudget) {
-        rank = 'C'; // Danger
+
+    if (maxBudgetMax === 0 && safeBudgetMax === 0) {
+      rank = 'C'; // 借入不可の場合は問答無用でC
+    } else if (desired > 0) {
+      if (desired <= safeBudgetMin) {
+        rank = 'A'; // 下限年収でも安全圏
+      } else if (desired > maxBudgetMax) {
+        rank = 'C'; // 上限年収でも超過
       } else {
-        rank = 'B'; // Caution
+        rank = 'B'; // 検討圏
       }
     }
+
+    // 月々の返済目安
+    const calcMonthly = (loanAmount, r, m) => {
+      if (loanAmount <= 0 || r <= 0) return 0;
+      const mr = r / 12;
+      return Math.round(loanAmount * mr * Math.pow(1 + mr, m) / (Math.pow(1 + mr, m) - 1));
+    };
+    // 上限予算ベース
+    const monthlyPaymentMin = calcMonthly(maxLoanMin, rate, months);
+    const monthlyPaymentMax = calcMonthly(maxLoanMax, rate, months);
+    // 安全予算ベース
+    const safeMonthlyPaymentMin = calcMonthly(safeLoanMin, rate, months);
+    const safeMonthlyPaymentMax = calcMonthly(safeLoanMax, rate, months);
+
+    // 範囲文字列を生成（表示・保存用）
+    const safeBudgetText = (safeBudgetMin === safeBudgetMax)
+      ? `${safeBudgetMin}` : `${safeBudgetMin}〜${safeBudgetMax}`;
+    const maxBudgetText = (maxBudgetMin === maxBudgetMax)
+      ? `${maxBudgetMin}` : `${maxBudgetMin}〜${maxBudgetMax}`;
+    const fmtM = (v) => (v / 10000).toFixed(1);
+    const monthlyPaymentText = (monthlyPaymentMin === monthlyPaymentMax)
+      ? `約${fmtM(monthlyPaymentMin)}万円` : `約${fmtM(monthlyPaymentMin)}〜${fmtM(monthlyPaymentMax)}万円`;
 
     return {
       userId: input.userId,
@@ -411,8 +494,18 @@ class Calculator {
       propertyType: input.propertyType,
       targetArea: input.targetArea,
       mustConditions: input.mustConditions,
-      maxBudget: maxBudget,
-      safeBudget: safeBudget,
+      maxBudget: maxBudgetText,
+      safeBudget: safeBudgetText,
+      safeBudgetMin: safeBudgetMin,
+      safeBudgetMax: safeBudgetMax,
+      maxBudgetMin: maxBudgetMin,
+      maxBudgetMax: maxBudgetMax,
+      monthlyPaymentMin: monthlyPaymentMin,
+      monthlyPaymentMax: monthlyPaymentMax,
+      safeMonthlyPaymentMin: safeMonthlyPaymentMin,
+      safeMonthlyPaymentMax: safeMonthlyPaymentMax,
+      monthlyPaymentText: monthlyPaymentText,
+      actualYears: actualYears,
       rank: rank
     };
   }
@@ -465,29 +558,157 @@ class LINE {
 class MessageBuilder {
   static createDiagnosisResult(result) {
     const color = result.rank === 'A' ? '#06C755' : (result.rank === 'B' ? '#FF9800' : '#E53935');
-    
-    // ゾーン判定名
-    let zoneTitle = '安全圏（Safe）';
-    let zoneDesc = '無理のない返済計画です';
-    let headerTitle = 'ゆとりある予算計画です✨';
-    if (result.rank === 'B') {
-      zoneTitle = '検討圏（Caution）';
-      zoneDesc = '平均的な返済比率ですが、金利上昇に注意が必要です';
-      headerTitle = '標準的な予算計画です';
-    } else if (result.rank === 'C') {
-      zoneTitle = '警戒圏（Danger）';
-      zoneDesc = '借入上限に近く、余裕を持った計画が必要です';
-      headerTitle = '予算超過の可能性があります';
+
+    // --- ヘッダータイトル ---
+    let headerTitle = 'ゆとりのある予算計画です✨';
+    if (result.rank === 'B') headerTitle = '標準的な予算計画です';
+    else if (result.rank === 'C') headerTitle = '予算超過の可能性があります';
+
+    // --- 金額表示ヘルパー ---
+    const roundBudget = (amount) => Math.floor(amount / 100) * 100;
+    const fmtMan = (v) => `約 ${roundBudget(v).toLocaleString()}万円`;
+    const rangeMan = (min, max) => (min === max)
+      ? fmtMan(min)
+      : `約 ${roundBudget(min).toLocaleString()}万円 〜 ${roundBudget(max).toLocaleString()}万円`;
+
+    // 月々返済目安（円→万円で表示、小数1桁）
+    const fmtMonthly = (v) => {
+      const man = v / 10000;
+      return `約 ${man.toFixed(1)}万円`;
+    };
+    const monthlyText = (result.monthlyPaymentMin === result.monthlyPaymentMax)
+      ? fmtMonthly(result.monthlyPaymentMin)
+      : `${fmtMonthly(result.monthlyPaymentMin)} 〜 ${fmtMonthly(result.monthlyPaymentMax)}`;
+
+    // 安全ライン月々返済目安
+    const safeMonthlyText = (result.safeMonthlyPaymentMin === result.safeMonthlyPaymentMax)
+      ? fmtMonthly(result.safeMonthlyPaymentMin)
+      : `${fmtMonthly(result.safeMonthlyPaymentMin)} 〜 ${fmtMonthly(result.safeMonthlyPaymentMax)}`;
+
+    // 家賃差額（家賃入力時のみ表示）
+    const rentDiffContents = [];
+    const rent = result.currentRent || 0; // 円単位
+    if (rent > 0) {
+      const diffMin = result.safeMonthlyPaymentMin - rent;
+      const diffMax = result.safeMonthlyPaymentMax - rent;
+      const fmtDiff = (v) => `約${(Math.abs(v) / 10000).toFixed(1)}万円`;
+      let diffText = '';
+      let diffColor = '#333333';
+      if (diffMin >= 0 && diffMax >= 0) {
+        // 両方増
+        diffText = (diffMin === diffMax)
+          ? `現在の家賃より ${fmtDiff(diffMin)} 増`
+          : `現在の家賃より ${fmtDiff(diffMin)} 〜 ${fmtDiff(diffMax)} 増`;
+        diffColor = '#E53935';
+      } else if (diffMin < 0 && diffMax < 0) {
+        // 両方減
+        diffText = (diffMin === diffMax)
+          ? `現在の家賃より ${fmtDiff(diffMin)} 減`
+          : `現在の家賃より ${fmtDiff(diffMax)} 〜 ${fmtDiff(diffMin)} 減`;
+        diffColor = '#2e7d32';
+      } else {
+        // 跨ぐ場合
+        diffText = `現在の家賃より ${fmtDiff(diffMin)}減 〜 ${fmtDiff(diffMax)}増`;
+        diffColor = '#FF9800';
+      }
+      rentDiffContents.push(
+        { type: 'text', text: `（現在の家賃: 約${(rent / 10000).toFixed(1)}万円）`, size: 'xxs', color: '#888888', align: 'center', margin: 'xs' },
+        { type: 'text', text: diffText, size: 'xs', weight: 'bold', color: diffColor, align: 'center', margin: 'xs' }
+      );
     }
 
-    // 金額を「範囲」で表示
-    const roundBudget = (amount) => Math.floor(amount / 100) * 100;
-    const minRange = roundBudget(result.safeBudget * 0.95);
-    const maxRange = roundBudget(result.safeBudget * 1.05);
-    const rangeText = `${minRange.toLocaleString()} 〜 ${maxRange.toLocaleString()}万円`;
+    // 借入可能額
+    const maxBudgetRange = rangeMan(result.maxBudgetMin, result.maxBudgetMax);
+    // 安全予算
+    const safeBudgetRange = rangeMan(result.safeBudgetMin, result.safeBudgetMax);
 
     // 診断ID
     const diagnosisId = result.diagnosisId || '';
+
+    // 返済期間注釈（35年未満の場合のみ表示）
+    const actualYears = result.actualYears || 35;
+    const termNoteContents = [];
+    if (actualYears < 35) {
+      termNoteContents.push(
+        { type: 'text', text: `※返済期間${actualYears}年（完済時80歳）で計算`, size: 'xxs', color: '#888888', align: 'center', margin: 'sm' }
+      );
+    }
+
+    // --- ランク別アドバイス文 ---
+    let adviceLines = [];
+    if (result.rank === 'A') {
+      adviceLines = [
+        'この範囲であれば、',
+        '将来の支出増加にも比較的対応しやすい水準です。'
+      ];
+    } else if (result.rank === 'B') {
+      adviceLines = [
+        'ご希望条件によっては、',
+        '借入上限に近づく可能性があります。',
+        '',
+        '物件価格だけでなく、',
+        '固定資産税・修繕費・将来の教育費なども含めて',
+        '総合的に判断することが大切です。'
+      ];
+    } else {
+      adviceLines = [
+        '現在のご希望条件では、',
+        '借入上限に近い可能性があります。',
+        '',
+        'より安全に進めるためには、',
+        '・エリアの見直し',
+        '・購入価格の調整',
+        '・頭金の準備',
+        '・既存借入の整理',
+        '・住宅ローン契約時に完済できる借入の確認',
+        '',
+        'などを検討すると安心です。'
+      ];
+    }
+
+    // --- ランク別CTAボタン ---
+    const btnPro = (label) => ({
+      type: 'button', style: 'primary', color: '#06C755', height: 'sm',
+      action: { type: 'uri', label: label, uri: 'https://www.wintate.net/reservation/select/' }
+    });
+    const btnRediagnose = {
+      type: 'button', style: 'secondary', height: 'sm',
+      action: { type: 'uri', label: '↻ 条件を変えて再診断する', uri: 'https://liff.line.me/2009124041-eKYG4I5Q' }
+    };
+    const btnAI = (label, msg) => ({
+      type: 'button', style: 'link', height: 'sm',
+      action: { type: 'message', label: label, text: msg }
+    });
+
+    let footerButtons = [];
+    if (result.rank === 'A') {
+      footerButtons = [
+        btnPro('▶ この条件で具体的にプロに相談する'),
+        btnRediagnose,
+        btnAI('▶ この条件でAIに詳しく相談する', 'この条件で具体的に相談したいです。')
+      ];
+    } else if (result.rank === 'B') {
+      footerButtons = [
+        btnPro('▶ 安全な進め方をプロに相談する'),
+        btnRediagnose,
+        btnAI('▶ この条件でAIに相談する', '安全な住宅購入の進め方を相談したいです。')
+      ];
+    } else {
+      footerButtons = [
+        { type: 'button', style: 'primary', color: '#06C755', height: 'sm',
+          action: { type: 'message', label: '▶ 改善ポイントをAIに相談する', text: '予算を改善するためのポイントを教えてください。' } },
+        btnRediagnose,
+        { type: 'button', style: 'link', height: 'sm',
+          action: { type: 'uri', label: '▶ 安全な進め方をプロに相談する', uri: 'https://www.wintate.net/reservation/select/' } }
+      ];
+    }
+
+    // --- 注釈テキスト ---
+    const disclaimerTexts = [
+      `※借入期間${actualYears}年・金利1.0％で試算した概算です。`,
+      '※既存借入の延滞等がない前提で算出しています。',
+      '※金融機関の審査結果を保証するものではありません。'
+    ];
 
     return {
       type: 'flex',
@@ -502,18 +723,12 @@ class MessageBuilder {
             { type: 'text', text: '診断完了', color: '#ffffffaa', size: 'xs' },
             { type: 'text', text: headerTitle, weight: 'bold', color: '#FFFFFF', size: 'lg', margin: 'sm' },
             {
-              type: 'box',
-              layout: 'horizontal',
-              margin: 'md',
+              type: 'box', layout: 'horizontal', margin: 'md',
               contents: [
                 { type: 'text', text: `あなたの診断ID: ${diagnosisId}`, color: '#ffffffcc', size: 'xs' }
               ],
-              paddingTop: 'sm',
-              borderWidth: 'normal',
-              borderColor: '#ffffff44',
-              paddingStart: 'none',
-              paddingEnd: 'none',
-              paddingBottom: 'none'
+              paddingTop: 'sm', borderWidth: 'normal', borderColor: '#ffffff44',
+              paddingStart: 'none', paddingEnd: 'none', paddingBottom: 'none'
             }
           ],
           backgroundColor: color,
@@ -523,73 +738,71 @@ class MessageBuilder {
           type: 'box',
           layout: 'vertical',
           contents: [
-            // 希望整理シート
+            // --- 想定借入可能額 ---
+            { type: 'text', text: '現在のご年収から見た', size: 'xs', color: '#888888', margin: 'lg', align: 'center' },
+            { type: 'text', text: '想定借入可能額の目安', size: 'sm', color: '#333333', weight: 'bold', align: 'center', margin: 'xs' },
             {
-              type: 'text',
-              text: '📋 あなたの希望整理シート',
-              weight: 'bold',
-              size: 'sm',
-              margin: 'xl',
-              color: '#333333'
-            },
-            {
-              type: 'box',
-              layout: 'vertical',
-              margin: 'sm',
-              spacing: 'sm',
-              backgroundColor: '#fafafa',
-              cornerRadius: '8px',
-              paddingAll: 'md',
+              type: 'box', layout: 'vertical', margin: 'sm',
+              backgroundColor: '#f0f0f0', cornerRadius: '8px', paddingAll: 'md',
               contents: [
-                {
-                  type: 'box', layout: 'horizontal', contents: [
-                    { type: 'text', text: '物件種別', size: 'xs', color: '#888888', flex: 2 },
-                    { type: 'text', text: result.propertyType || '未指定', size: 'xs', color: '#333333', flex: 3 }
-                  ]
-                },
-                {
-                  type: 'box', layout: 'horizontal', contents: [
-                    { type: 'text', text: '希望エリア', size: 'xs', color: '#888888', flex: 2 },
-                    { type: 'text', text: result.targetArea || '未指定', size: 'xs', color: '#333333', flex: 3 }
-                  ]
-                },
-                {
-                  type: 'box', layout: 'horizontal', contents: [
-                    { type: 'text', text: '現在家賃', size: 'xs', color: '#888888', flex: 2 },
-                    { type: 'text', text: result.currentRent ? `${Number(result.currentRent).toLocaleString()}円` : '未指定', size: 'xs', color: '#333333', flex: 3 }
-                  ]
-                },
-                {
-                  type: 'box', layout: 'horizontal', contents: [
-                    { type: 'text', text: '重視条件', size: 'xs', color: '#888888', flex: 2 },
-                    { type: 'text', text: result.mustConditions || '未指定', size: 'xs', color: '#00B900', weight: 'bold', flex: 3, wrap: true }
-                  ]
-                }
+                { type: 'text', text: maxBudgetRange, size: 'lg', weight: 'bold', color: color, align: 'center' }
               ]
             },
 
-            // アドバイス
+            // --- 月々の返済目安 ---
+            { type: 'text', text: '月々の返済目安', size: 'xs', color: '#888888', margin: 'lg', align: 'center' },
             {
-              type: 'box',
-              layout: 'vertical',
-              margin: 'xl',
-              backgroundColor: '#fff3e0',
-              cornerRadius: '8px',
-              paddingAll: 'md',
+              type: 'box', layout: 'vertical', margin: 'xs',
               contents: [
-                { type: 'text', text: '💡 アドバイス', weight: 'bold', size: 'sm', color: '#ff9800' },
-                { 
-                  type: 'text', 
-                  text: result.rank === 'A' 
-                    ? '十分な予算余裕があります。立地やグレードにこだわった物件選びが可能です。' 
-                    : (result.rank === 'B' ? '標準的な予算計画です。物件価格だけでなく、維持費も含めたトータルコストで判断しましょう。' : '少し予算の上限に近いため、エリアを見直すか、頭金を準備することでより安全な計画になります。'),
-                  size: 'xs', 
-                  color: '#555555',  
-                  wrap: true, 
-                  margin: 'sm', 
-                  lineHeight: '1.6' 
-                }
+                { type: 'text', text: monthlyText, size: 'md', weight: 'bold', color: '#333333', align: 'center' }
               ]
+            },
+
+            // --- 区切り線 ---
+            {
+              type: 'separator', margin: 'xl', color: '#e0e0e0'
+            },
+
+            // --- 生活安全ラインの目安 ---
+            { type: 'text', text: '生活安全ラインの目安', size: 'sm', color: '#333333', weight: 'bold', margin: 'xl', align: 'center' },
+            { type: 'text', text: '無理のない範囲で検討できる金額', size: 'xs', color: '#888888', align: 'center', margin: 'xs' },
+            {
+              type: 'box', layout: 'vertical', margin: 'sm',
+              backgroundColor: '#e8f5e9', cornerRadius: '8px', paddingAll: 'md',
+              contents: [
+                { type: 'text', text: safeBudgetRange, size: 'lg', weight: 'bold', color: '#2e7d32', align: 'center' }
+              ]
+            },
+
+            // --- 安全ライン 月々の返済目安 ---
+            { type: 'text', text: '月々の返済目安', size: 'xs', color: '#888888', margin: 'lg', align: 'center' },
+            {
+              type: 'box', layout: 'vertical', margin: 'xs',
+              contents: [
+                { type: 'text', text: safeMonthlyText, size: 'md', weight: 'bold', color: '#2e7d32', align: 'center' }
+              ]
+            },
+            // --- 家賃差額（家賃入力時のみ） ---
+            ...(rentDiffContents),
+            // --- 返済期間注釈（35年未満の場合のみ） ---
+            ...(termNoteContents),
+
+            // --- ランク別アドバイス ---
+            {
+              type: 'box', layout: 'vertical', margin: 'xl',
+              backgroundColor: result.rank === 'A' ? '#e8f5e9' : (result.rank === 'B' ? '#fff3e0' : '#ffebee'),
+              cornerRadius: '8px', paddingAll: 'md',
+              contents: adviceLines.filter(line => line !== '').map(line =>
+                  ({ type: 'text', text: line, size: 'xs', color: '#555555', wrap: true, lineHeight: '1.6' })
+              )
+            },
+
+            // --- 注釈 ---
+            {
+              type: 'box', layout: 'vertical', margin: 'lg',
+              contents: disclaimerTexts.map(t =>
+                ({ type: 'text', text: t, size: 'xxs', color: '#aaaaaa', wrap: true })
+              )
             }
           ]
         },
@@ -598,37 +811,7 @@ class MessageBuilder {
           layout: 'vertical',
           spacing: 'sm',
           contents: [
-             {
-               type: 'button',
-               style: 'primary',
-               color: '#06C755',
-               height: 'sm',
-               action: {
-                 type: 'uri',
-                 label: '📅 来店・Web予約する',
-                 uri: 'https://www.wintate.net/reservation/select/'
-               }
-             },
-             {
-               type: 'button',
-               style: 'secondary',
-               height: 'sm',
-               action: {
-                 type: 'uri',
-                 label: '↻ 条件を変えて再診断',
-                 uri: 'https://liff.line.me/2009124041-eKYG4I5Q'
-               }
-             },
-             {
-               type: 'button',
-               style: 'link',
-               height: 'sm',
-               action: {
-                 type: 'message',
-                 label: '🤖 この条件でAIに相談',
-                 text: '診断結果について相談したいです。'
-               }
-             }
+            ...footerButtons
           ]
         }
       }
@@ -681,15 +864,8 @@ class Dify {
   }
 
   chatWithDiagnosis(userId, query, diagnosis, conversationId) {
-    // 判定ランク算出（safe_budget / desired_budgetから）
-    let rank = 'B';
-    const safe = Number(diagnosis.safeBudget) || 0;
-    const max = Number(diagnosis.maxBudget) || 0;
-    const desired = Number(diagnosis.desiredBudget) || 0;
-    if (desired > 0 && safe > 0) {
-      if (desired <= safe) rank = 'A';
-      else if (desired > max) rank = 'C';
-    }
+    // ランクはスプシから取得（保存済み）
+    const rank = diagnosis.rank || 'B';
 
     return this.chat(userId, query, {
       heat_level: String(diagnosis.heatLevel || ''),
@@ -706,8 +882,11 @@ class Dify {
       conditions: String(diagnosis.conditions || ''),
       concerns: String(diagnosis.concerns || ''),
       desired_budget: String(diagnosis.desiredBudget || ''),
+      age: String(diagnosis.q14Label || ''),
+      down_payment: String(diagnosis.q15Label || ''),
       safe_budget: String(diagnosis.safeBudget || ''),
       max_budget: String(diagnosis.maxBudget || ''),
+      monthly_payment: String(diagnosis.monthlyPaymentText || ''),
       rank: rank
     }, conversationId);
   }
@@ -724,7 +903,8 @@ const SHEET_HEADERS = [
   '購入時期', '世帯年収', '雇用形態', '勤続年数',
   '既存借入', '現在の住まい', '家族構成', '将来の予定',
   '希望エリア', '物件タイプ', '譲れない条件', '不安なこと', '希望価格帯',
-  '安全予算（万円）', '上限予算（万円）',
+  '年齢', '頭金',
+  '安全予算（万円）', '上限予算（万円）', '月々返済目安', '返済期間', '判定ランク',
   '会話ID', '更新日時'
 ];
 
@@ -750,8 +930,13 @@ function buildRowData(userId, data) {
     data.q11Label || '',
     data.q12Label || '',
     data.q13Label || '',
+    data.q14Label || '',
+    data.q15Label || '',
     data.safeBudget || '',
     data.maxBudget || '',
+    data.monthlyPaymentText || '',
+    data.actualYears ? `${data.actualYears}年` : '',
+    data.rank || '',
     data.conversationId || '',
     new Date()
   ];
@@ -792,6 +977,7 @@ function getUserData(userId) {
         desiredBudget: row['希望価格帯'] || '',
         safeBudget: row['安全予算（万円）'] || '',
         maxBudget: row['上限予算（万円）'] || '',
+        rank: row['判定ランク'] || '',
         conversationId: row['会話ID'] || '',
         // buildRowData互換フィールド（saveUserConversationId経由での上書き防止用）
         diagnosisId: row['診断ID'] || '',
@@ -808,7 +994,9 @@ function getUserData(userId) {
         q10Label: row['物件タイプ'] || '',
         q11Label: row['譲れない条件'] || '',
         q12Label: row['不安なこと'] || '',
-        q13Label: row['希望価格帯'] || ''
+        q13Label: row['希望価格帯'] || '',
+        q14Label: row['年齢'] || '',
+        q15Label: row['頭金'] || ''
       };
     }
   }
