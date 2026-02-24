@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>マイホーム適正予算診断 — 計算ロジック詳細</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            line-height: 1.8;
+        }
+
+        .container {
+            max-width: 820px;
+            margin: 0 auto;
+            padding: 40px 24px 60px;
+        }
+
+        /* Header */
+        .page-header {
+            background: linear-gradient(135deg, #06C755, #04a648);
+            color: #fff;
+            padding: 40px 32px;
+            border-radius: 16px;
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            font-size: 1.6rem;
+            margin-bottom: 8px;
+        }
+
+        .page-header p {
+            font-size: 0.95rem;
+            opacity: 0.9;
+        }
+
+        /* Section */
+        .section {
+            background: #fff;
+            border-radius: 12px;
+            padding: 28px 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .section h2 {
+            font-size: 1.2rem;
+            color: #06C755;
+            border-left: 4px solid #06C755;
+            padding-left: 12px;
+            margin-bottom: 16px;
+        }
+
+        .section h3 {
+            font-size: 1rem;
+            color: #555;
+            margin: 20px 0 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px dashed #ddd;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0 16px;
+            font-size: 0.9rem;
+        }
+
+        th,
+        td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #555;
+            white-space: nowrap;
+        }
+
+        td {
+            color: #333;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Formula */
+        .formula {
+            background: #f0f4f8;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin: 12px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: #2d3748;
+            border-left: 3px solid #06C755;
+        }
+
+        /* Example Box */
+        .example {
+            background: #fffbf0;
+            border: 1px solid #ffe0a0;
+            border-radius: 8px;
+            padding: 16px 18px;
+            margin: 12px 0;
+        }
+
+        .example .label {
+            font-size: 0.8rem;
+            color: #b8860b;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        /* Rank Diagram */
+        .rank-diagram {
+            display: flex;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 16px 0;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .rank-diagram .rank-a {
+            flex: 1;
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 14px 8px;
+        }
+
+        .rank-diagram .rank-b {
+            flex: 1;
+            background: #fff3e0;
+            color: #e65100;
+            padding: 14px 8px;
+        }
+
+        .rank-diagram .rank-c {
+            flex: 1;
+            background: #ffebee;
+            color: #c62828;
+            padding: 14px 8px;
+        }
+
+        .rank-diagram div small {
+            display: block;
+            font-weight: 400;
+            font-size: 0.75rem;
+            margin-top: 2px;
+        }
+
+        /* Impact Stars */
+        .stars {
+            color: #f59e0b;
+            letter-spacing: 2px;
+        }
+
+        .stars-dim {
+            color: #ddd;
+        }
+
+        /* Note */
+        .note {
+            font-size: 0.82rem;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .note::before {
+            content: "※ ";
+        }
+
+        /* Highlight */
+        .hl {
+            background: #e8f5e9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .hl-warn {
+            background: #fff3e0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <div class="page-header">
+            <h1>🏠 マイホーム適正予算診断</h1>
+            <p>計算ロジック詳細 — 住宅ローン審査基準ベース</p>
+        </div>
+
+        <!-- 1. 入力値 -->
+        <div class="section">
+            <h2>1. 計算に使う入力値</h2>
+            <table>
+                <tr>
+                    <th>入力</th>
+                    <th>取得元</th>
+                    <th>例</th>
+                </tr>
+                <tr>
+                    <td>世帯年収</td>
+                    <td>Q2（範囲 or 手動入力）</td>
+                    <td>400〜599万円</td>
+                </tr>
+                <tr>
+                    <td>年齢</td>
+                    <td>Q14（選択 or 手動入力）</td>
+                    <td>35歳</td>
+                </tr>
+                <tr>
+                    <td>雇用形態</td>
+                    <td>Q3</td>
+                    <td>正社員</td>
+                </tr>
+                <tr>
+                    <td>勤続年数</td>
+                    <td>Q4</td>
+                    <td>1年未満</td>
+                </tr>
+                <tr>
+                    <td>既存借入の月々返済額</td>
+                    <td>Q5</td>
+                    <td>30,000円/月</td>
+                </tr>
+                <tr>
+                    <td>頭金（自己資金）</td>
+                    <td>Q15</td>
+                    <td>300万円</td>
+                </tr>
+                <tr>
+                    <td>希望購入価格帯</td>
+                    <td>Q13</td>
+                    <td>3,000〜4,000万円</td>
+                </tr>
+            </table>
+            <h3>定数</h3>
+            <table>
+                <tr>
+                    <th>項目</th>
+                    <th>値</th>
+                </tr>
+                <tr>
+                    <td>金利</td>
+                    <td>1.0%（変動金利）</td>
+                </tr>
+                <tr>
+                    <td>最大返済期間</td>
+                    <td>35年</td>
+                </tr>
+                <tr>
+                    <td>完済上限年齢</td>
+                    <td>80歳</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 2. 計算フロー -->
+        <div class="section">
+            <h2>2. 計算の流れ</h2>
+
+            <h3>Step 1: 返済期間の決定（年齢による調整）</h3>
+            <div class="formula">「80歳までに完済」が原則。最長35年までの返済期間のうち、80歳に収まる方を適用します。</div>
+            <table>
+                <tr>
+                    <th>年齢</th>
+                    <th>考え方</th>
+                    <th>返済期間</th>
+                </tr>
+                <tr>
+                    <td>25歳</td>
+                    <td>80歳までに55年あるが、上限35年</td>
+                    <td><strong>35年</strong></td>
+                </tr>
+                <tr>
+                    <td>35歳</td>
+                    <td>80歳までに45年あるが、上限35年</td>
+                    <td><strong>35年</strong></td>
+                </tr>
+                <tr>
+                    <td>45歳</td>
+                    <td>80歳までに35年あるのでそのまま</td>
+                    <td><strong>35年</strong></td>
+                </tr>
+                <tr>
+                    <td>50歳</td>
+                    <td>80歳までに30年しかない</td>
+                    <td><strong>30年</strong></td>
+                </tr>
+                <tr>
+                    <td>55歳</td>
+                    <td>80歳までに25年しかない</td>
+                    <td><strong>25年</strong></td>
+                </tr>
+            </table>
+
+            <h3>Step 2: 返済比率の決定</h3>
+            <p><strong>上限（銀行融資目線）:</strong></p>
+            <table>
+                <tr>
+                    <th>条件</th>
+                    <th>返済比率</th>
+                </tr>
+                <tr>
+                    <td>公務員</td>
+                    <td><span class="hl">40%</span></td>
+                </tr>
+                <tr>
+                    <td>年収400万以上（公務員以外）</td>
+                    <td><span class="hl">35%</span></td>
+                </tr>
+                <tr>
+                    <td>年収400万未満（公務員以外）</td>
+                    <td><span class="hl">30%</span></td>
+                </tr>
+            </table>
+            <p><strong>安全ライン（生活安全目線）:</strong> 一律 <span class="hl">20%</span></p>
+
+            <h3>Step 3: 月々返済可能額の算出</h3>
+            <div class="formula">月々の返済可能額 ＝ 年収のうち返済に充てられる割合を月割りした額 － 既存借入の月々返済額</div>
+            <p class="note">既存借入がある場合、銀行審査と同様に差し引きます。差し引いた結果がマイナスになる場合は0円として扱います。</p>
+            <div class="example">
+                <div class="label">▼ 計算例：年収500万・正社員・既存借入3万円/月</div>
+                <table>
+                    <tr>
+                        <th></th>
+                        <th>上限</th>
+                        <th>安全</th>
+                    </tr>
+                    <tr>
+                        <td>年収ベース</td>
+                        <td>500万×35%÷12 = 145,833円</td>
+                        <td>500万×20%÷12 = 83,333円</td>
+                    </tr>
+                    <tr>
+                        <td>既存借入差引後</td>
+                        <td><strong>115,833円</strong></td>
+                        <td><strong>53,333円</strong></td>
+                    </tr>
+                </table>
+            </div>
+
+            <h3>Step 4: 借入可能額の算出</h3>
+            <p>「月々これだけ返済できる」という金額から、金利と返済期間をもとに<strong>最大いくらまで借りられるか</strong>を逆算します。<br>
+                これは銀行の住宅ローン審査でも使われる標準的な計算方式（元利均等返済）です。</p>
+            <div class="example">
+                <div class="label">▼ 計算例：金利1.0%・35年・月々115,833円返済できる場合</div>
+                <p>→ 最大で <strong>約3,455万円</strong> まで借入可能</p>
+            </div>
+
+            <h3>Step 5: 勤続年数補正</h3>
+            <table>
+                <tr>
+                    <th>勤続年数</th>
+                    <th>補正係数</th>
+                    <th>効果</th>
+                </tr>
+                <tr>
+                    <td><span class="hl-warn">1年未満</span></td>
+                    <td><strong>× 0.7</strong></td>
+                    <td>借入可能額を30%減額</td>
+                </tr>
+                <tr>
+                    <td>1年以上</td>
+                    <td>× 1.0</td>
+                    <td>補正なし</td>
+                </tr>
+            </table>
+            <div class="example">
+                <div class="label">▼ 計算例：勤続1年未満の場合</div>
+                <p>3,455万円 × 0.7 = <strong>約2,418万円</strong></p>
+            </div>
+
+            <h3>Step 6: 予算総額の算出</h3>
+            <div class="formula">予算総額 ＝ 借入可能額 ＋ 頭金（自己資金）</div>
+            <div class="example">
+                <div class="label">▼ 計算例：頭金300万円の場合</div>
+                <p>2,418万 + 300万 = <strong>約2,718万円</strong></p>
+            </div>
+
+            <h3>Step 7: 月々の返済目安</h3>
+            <p>予算総額から頭金を除いた借入額に対して、元利均等返済方式で実際の月々返済額を算出します。</p>
+        </div>
+
+        <!-- 3. ランク判定 -->
+        <div class="section">
+            <h2>3. ランク判定（ゾーン判定）</h2>
+            <p>希望購入価格帯と計算結果を比較。<strong>保守的判定（下限年収ベース）</strong>を採用。</p>
+            <div class="rank-diagram">
+                <div class="rank-a">ランクA<small>安全圏</small></div>
+                <div class="rank-b">ランクB<small>検討圏</small></div>
+                <div class="rank-c">ランクC<small>警戒圏</small></div>
+            </div>
+            <table>
+                <tr>
+                    <th>ランク</th>
+                    <th>条件</th>
+                </tr>
+                <tr>
+                    <td><strong>A</strong></td>
+                    <td>希望額 ≦ 安全予算(下限) → 下限年収でも安全圏内</td>
+                </tr>
+                <tr>
+                    <td><strong>B</strong></td>
+                    <td>A・C以外 → 検討圏（条件次第で対応可能）</td>
+                </tr>
+                <tr>
+                    <td><strong>C</strong></td>
+                    <td>希望額 ＞ 上限予算(上限) → 上限年収でも超過</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 4. フルシミュレーション -->
+        <div class="section">
+            <h2>4. 計算例（フルシミュレーション）</h2>
+            <div class="example">
+                <div class="label">▼ 条件</div>
+                <p>年齢: 40歳 ／ 年収: 600〜799万円 ／ 正社員 ／ 勤続5年以上<br>
+                    既存借入: なし ／ 頭金: 500万円 ／ 希望: 3,000〜4,000万（中央値3,500万）</p>
+            </div>
+
+            <h3>下限年収 600万の場合</h3>
+            <table>
+                <tr>
+                    <th>Step</th>
+                    <th>上限</th>
+                    <th>安全</th>
+                </tr>
+                <tr>
+                    <td>返済比率</td>
+                    <td>35%</td>
+                    <td>20%</td>
+                </tr>
+                <tr>
+                    <td>月々返済可能額</td>
+                    <td>175,000円</td>
+                    <td>100,000円</td>
+                </tr>
+                <tr>
+                    <td>借入可能額</td>
+                    <td>約5,218万円</td>
+                    <td>約2,982万円</td>
+                </tr>
+                <tr>
+                    <td>勤続補正(×1.0)</td>
+                    <td>約5,218万円</td>
+                    <td>約2,982万円</td>
+                </tr>
+                <tr>
+                    <td>+頭金500万</td>
+                    <td><strong>約5,718万円</strong></td>
+                    <td><strong>約3,482万円</strong></td>
+                </tr>
+            </table>
+
+            <h3>上限年収 799万の場合</h3>
+            <table>
+                <tr>
+                    <th>Step</th>
+                    <th>上限</th>
+                    <th>安全</th>
+                </tr>
+                <tr>
+                    <td>月々返済可能額</td>
+                    <td>233,041円</td>
+                    <td>133,166円</td>
+                </tr>
+                <tr>
+                    <td>借入可能額</td>
+                    <td>約6,949万円</td>
+                    <td>約3,971万円</td>
+                </tr>
+                <tr>
+                    <td>+頭金500万</td>
+                    <td><strong>約7,449万円</strong></td>
+                    <td><strong>約4,471万円</strong></td>
+                </tr>
+            </table>
+
+            <h3>診断結果</h3>
+            <table>
+                <tr>
+                    <th>項目</th>
+                    <th>値</th>
+                </tr>
+                <tr>
+                    <td>想定借入可能額</td>
+                    <td>約5,700万〜7,400万円</td>
+                </tr>
+                <tr>
+                    <td>安全予算</td>
+                    <td>約3,400万〜4,400万円</td>
+                </tr>
+                <tr>
+                    <td>判定</td>
+                    <td>希望3,500万 vs 安全(min)3,482万 → <strong>ランクB（検討圏）</strong></td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 5. 影響度 -->
+        <div class="section">
+            <h2>5. 各補正の影響まとめ</h2>
+            <table>
+                <tr>
+                    <th>補正項目</th>
+                    <th>影響する箇所</th>
+                    <th>影響度</th>
+                </tr>
+                <tr>
+                    <td>年齢 → 返済期間短縮</td>
+                    <td>借入可能額全体</td>
+                    <td><span class="stars">★★★</span></td>
+                </tr>
+                <tr>
+                    <td>既存借入 → 月々返済差引</td>
+                    <td>借入可能額全体</td>
+                    <td><span class="stars">★★★</span></td>
+                </tr>
+                <tr>
+                    <td>勤続年数 → 0.7倍補正</td>
+                    <td>借入可能額全体</td>
+                    <td><span class="stars">★★</span><span class="stars-dim">★</span></td>
+                </tr>
+                <tr>
+                    <td>頭金 → 予算加算</td>
+                    <td>予算総額のみ</td>
+                    <td><span class="stars">★★</span><span class="stars-dim">★</span></td>
+                </tr>
+                <tr>
+                    <td>雇用形態 → 返済比率</td>
+                    <td>借入可能額全体</td>
+                    <td><span class="stars">★★</span><span class="stars-dim">★</span></td>
+                </tr>
+            </table>
+        </div>
+
+    </div>
+</body>
+
+</html>

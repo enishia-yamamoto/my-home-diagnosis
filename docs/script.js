@@ -174,7 +174,8 @@ const QUESTIONS = {
             { label: '正確に入力', value: 'MANUAL', input: true }
         ],
         inputType: 'number',
-        inputPlaceholder: '例: 35'
+        inputPlaceholder: '例: 35',
+        inputUnit: '歳'
     },
     q15: {
         id: 'q15',
