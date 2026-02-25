@@ -175,7 +175,8 @@ const QUESTIONS = {
         ],
         inputType: 'number',
         inputPlaceholder: '例: 35',
-        inputUnit: '歳'
+        inputUnit: '歳',
+        helpText: '※正確に入力すると、返済期間別の複数パターンで診断結果が表示されます'
     },
     q15: {
         id: 'q15',
@@ -288,6 +289,10 @@ function showQuestion(qId) {
                     </div>
                 </div>
             `;
+        }
+        // ヘルプテキスト（注釈）
+        if (q.helpText) {
+            html += `<p class="help-text" style="font-size: 0.75rem; color: #888; margin-top: 8px; text-align: center;">${q.helpText}</p>`;
         }
     } else if (q.type === 'checkbox') {
         html += '<div class="options-list">';
